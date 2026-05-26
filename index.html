@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最強最安全的城市機車友善地圖 - 危險路段評價系統</title>
+    
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Custom Cyber Dark Styling -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Dynamic Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <i class="fas fa-motorcycle"></i>
+            </div>
+            <div class="brand-text">
+                <h1>最強最安全的城市機車友善地圖</h1>
+                <span>危險路段評價系統 &bull; F-03</span>
+            </div>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-pill spots">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>危險路標:</span>
+                <span class="count" id="total-danger-spots">0</span>
+            </div>
+            <div class="stat-pill votes">
+                <i class="fas fa-heart"></i>
+                <span>社群共建:</span>
+                <span class="count" id="total-votes-count">0</span>
+            </div>
+            
+            <div class="user-profile" id="header-profile">
+                <div class="user-avatar">陳</div>
+                <div class="user-name" id="user-profile-name">陳同學 (點擊看徽章)</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-container">
+        <!-- Interactive Map Container -->
+        <div id="map"></div>
+
+        <!-- Floating Controls overlay on map -->
+        <div class="map-float-controls">
+            <!-- Search & Filters -->
+            <div class="glass-panel">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="搜尋危險路段、交叉路口或分類...">
+                </div>
+                <div class="filter-group">
+                    <div class="filter-title">地圖圖例說明</div>
+                    <div class="filter-options">
+                        <span class="filter-label"><span class="badge danger-5">★ 5</span> 極度危險 (易出事 / 瓶頸路段)</span>
+                        <span class="filter-label"><span class="badge danger-4">★ 4</span> 高度危險 (違停 / 視線死角多)</span>
+                        <span class="filter-label"><span class="badge danger-3">★ 3</span> 中度危險 (車流大 / 易有急停)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap Mode Trigger -->
+            <button class="map-tools-btn" id="heatmap-btn">
+                <i class="fas fa-fire"></i> 開啟危險熱點圖
+            </button>
+
+            <!-- Add Danger Report Trigger -->
+            <button class="map-tools-btn" id="add-danger-btn" style="border-left-color: var(--accent-blue);">
+                <i class="fas fa-plus-circle"></i> + 回報危險路段
+            </button>
+        </div>
+
+        <!-- Bottom Drawer: Dangerous List View (Nearby) -->
+        <div class="list-drawer glass-panel" id="list-drawer">
+            <div class="list-drawer-header">
+                <h3><i class="fas fa-list-ul" style="color: var(--accent-blue); margin-right: 5px;"></i> 逢甲學區危險路段清單</h3>
+                <button class="close-btn" id="drawer-close"><i class="fas fa-chevron-down"></i></button>
+            </div>
+            <div class="drawer-items-list" id="drawer-items-list">
+                <!-- Javascript will render drawer items dynamically -->
+            </div>
+        </div>
+
+        <!-- Float Drawer toggle button (when drawer is collapsed) -->
+        <button class="drawer-toggle-btn" id="drawer-toggle">
+            <i class="fas fa-list-ul"></i> 瀏覽危險清單
+        </button>
+
+        <!-- Right Side Panel: Details View & Submission Form -->
+        <div class="sidebar-right glass-panel" id="sidebar-right">
+            <div class="sidebar-header">
+                <h2>評估詳情與回報</h2>
+                <button class="close-btn" id="sidebar-close"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- VIEW 1: Danger Point Details -->
+                <div class="info-body" id="sidebar-details-view">
+                    <div class="hazard-meta">
+                        <span class="hazard-type-tag" id="detail-hazard-name">臨停違停 / 視線死角</span>
+                        <div class="star-rating" id="detail-stars">
+                            <!-- JS renders stars -->
+                        </div>
+                    </div>
+
+                    <h2 id="detail-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">逢甲路與福星路口</h2>
+                    
+                    <div class="form-group">
+                        <div class="section-label">騎士回報詳情</div>
+                        <div class="description-box" id="detail-description">
+                            此處路口尖峰時間車流大，待轉區經常擠滿機車...
+                        </div>
+                    </div>
+
+                    <div class="reporter-card">
+                        <div class="reporter-info">
+                            <div class="reporter-avatar"><i class="fas fa-user"></i></div>
+                            <div>回報者: <span id="detail-reporter" style="color: white; font-weight: 600;">大三騎士</span></div>
+                        </div>
+                        <div id="detail-time">2026-05-24 18:30</div>
+                    </div>
+
+                    <!-- Voting System (Agree/Disagree) -->
+                    <div class="form-group">
+                        <div class="section-label">這項回報對您有幫助嗎？</div>
+                        <div class="vote-section">
+                            <button class="vote-btn up" id="upvote-btn">
+                                <i class="fas fa-thumbs-up"></i> 贊同安全警示 (<span id="upvote-count">0</span>)
+                            </button>
+                            <button class="vote-btn down" id="downvote-btn">
+                                <i class="fas fa-thumbs-down"></i> 資訊不實 (<span id="downvote-count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Discussion / Comments Section -->
+                    <div class="comments-container">
+                        <div class="section-label">騎士社群討論留言板</div>
+                        <div class="comment-list" id="comment-list">
+                            <!-- Comment items rendered by JS -->
+                        </div>
+                        <div class="comment-input-box">
+                            <input type="text" id="comment-input" placeholder="新增騎士路況補充說明...">
+                            <button class="comment-submit-btn" id="comment-submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: Danger Point Report Form -->
+                <div class="info-body" id="sidebar-form-view" style="display: none;">
+                    <div class="location-indicator">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="form-lat-lng">已選擇地圖座標</span>
+                    </div>
+
+                    <form class="report-form" id="hazard-report-form">
+                        <div class="form-group">
+                            <label for="form-title">危險地段/路口名稱</label>
+                            <input type="text" id="form-title" placeholder="例如：河南路二段與西安街口" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="form-hazard-type">危險情況分類</label>
+                            <select id="form-hazard-type" required>
+                                <option value="illegal_parking">臨停違停嚴重 / 視線死角</option>
+                                <option value="crowded">人車交織 / 道路擁擠</option>
+                                <option value="fast_lane_merge">快慢車道匯流 / 轉彎不讓</option>
+                                <option value="bad_design">待轉區設計過小 / 路口標線不良</option>
+                                <option value="sudden_stop">外送車輛多 / 常有急停迴轉</option>
+                                <option value="other">其他道路潛在安全危險</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>評定危險星級 (1為低，5為極度危險)</label>
+                            <div class="rating-stars-input">
+                                <i class="fas fa-star active" data-value="1"></i>
+                                <i class="fas fa-star active" data-value="2"></i>
+                                <i class="fas fa-star active" data-value="3"></i>
+                                <i class="fas fa-star active" data-value="4"></i>
+                                <i class="fas fa-star active" data-value="5"></i>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="form-description">具體危險路況描述</label>
+                            <textarea id="form-description" placeholder="請詳細說明該路段何時最危險，有什麼潛在盲點？給其他騎士的避雷建議？" required></textarea>
+                        </div>
+
+                        <button type="submit" class="form-submit-btn">
+                            <i class="fas fa-check-circle"></i> 提交危險標記回報
+                        </button>
+                    </form>
+                </div>
+
+                <!-- VIEW 3: Personal Settings & Badge Achievements Mockup -->
+                <div class="info-body" id="sidebar-settings-view" style="display: none;">
+                    <div class="user-settings-panel">
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <div class="user-avatar" style="width: 60px; height: 60px; font-size: 1.8rem; margin: 0 auto 0.5rem auto; box-shadow: var(--glow-blue);">陳</div>
+                            <h3 style="color: white; font-weight: 700;">陳同學</h3>
+                            <p style="color: var(--accent-blue); font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;"><i class="fas fa-shield-alt"></i> 逢甲學區安全守護者</p>
+                        </div>
+
+                        <div class="user-achievement-badge">
+                            <i class="fas fa-trophy"></i>
+                            <div class="achievement-text">
+                                <h4>安全巡邏星 (等級 3)</h4>
+                                <p>您已成功回報了 5 個危險路段，並獲得了 84 次社群贊同！</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">已解鎖騎士徽章</div>
+                            <div class="badge-gallery">
+                                <div class="badge-item active">
+                                    <i class="fas fa-seedling"></i>
+                                    <span>回報新手</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <i class="fas fa-eye"></i>
+                                    <span>亮眼偵探</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <i class="fas fa-users"></i>
+                                    <span>社群共建者</span>
+                                </div>
+                                <div class="badge-item">
+                                    <i class="fas fa-medal" style="color: var(--text-muted)"></i>
+                                    <span style="color: var(--text-muted)">安全達人</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">個人帳戶統計</div>
+                            <div class="description-box" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>騎乘里程紀錄</span>
+                                    <span style="color: white; font-weight: 600;">128.4 KM</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>已回報點數</span>
+                                    <span style="color: white; font-weight: 600;">5 次</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>獲得愛心贊同</span>
+                                    <span style="color: white; font-weight: 600;">42 次</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="vote-btn" style="margin-top: 1rem; border-color: var(--accent-red); color: var(--accent-red);" onclick="showModal('login-modal')">
+                            <i class="fas fa-sign-out-alt"></i> 模擬切換使用者帳戶
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Guide banner / overlay toast -->
+        <div class="map-onboarding-toast" id="onboarding-toast">
+            <i class="fas fa-hand-point-up"></i>
+            <span>請點擊地圖上的任意位置來標記危險路段</span>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Mock Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal-container">
+            <div class="modal-logo">
+                <i class="fas fa-lock"></i>
+            </div>
+            <div class="modal-header">
+                <h3>騎士登入驗證</h3>
+                <p>請登入帳號以進行危險路況評分與留言</p>
+            </div>
+            <form class="modal-form">
+                <div class="form-group">
+                    <label>逢甲大學學校信箱 / 手機號碼</label>
+                    <input type="text" placeholder="例如：d1234567@fcu.edu.tw" value="d11081029@fcu.edu.tw">
+                </div>
+                <div class="form-group">
+                    <label>密碼</label>
+                    <input type="password" placeholder="輸入您的密碼" value="••••••••">
+                </div>
+                <button type="submit" class="modal-btn" id="modal-login-btn">
+                    立即登入並同步
+                </button>
+            </form>
+            <div class="modal-footer">
+                沒有帳號嗎？ <span>立即建立新騎士卡</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Notifications -->
+    <div class="notification-toast" id="notification-toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-msg">回報成功！</span>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Application Logic Resources -->
+    <script src="js/mockData.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
