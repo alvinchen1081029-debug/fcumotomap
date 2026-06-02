@@ -1316,3 +1316,139 @@ header {
         transform: translateY(0);
     }
 }
+
+/* Facility Toggle Buttons */
+.facility-toggle-btn {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+
+.facility-toggle-btn i {
+    font-size: 0.9rem;
+}
+
+.facility-toggle-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Gas station active: Green */
+#toggle-gas-stations.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: var(--glow-green);
+}
+
+/* Parking lot active: Cyan */
+#toggle-parking-lots.active {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-cyan);
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+}
+
+/* Facility Custom Markers styling */
+.facility-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.facility-ring {
+    border: 2px solid transparent;
+    border-radius: 50%;
+    height: 26px;
+    width: 26px;
+    position: absolute;
+    animation: facilityPulse 2s ease-out infinite;
+    opacity: 0;
+}
+
+.facility-dot {
+    border: 1.5px solid white;
+    border-radius: 50%;
+    height: 18px;
+    width: 18px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 9px;
+    transition: var(--transition-smooth);
+}
+
+/* Gas station marker: Green */
+.facility-marker.gas-marker .facility-ring {
+    border-color: var(--accent-green);
+    box-shadow: var(--glow-green);
+}
+.facility-marker.gas-marker .facility-dot {
+    background-color: var(--accent-green);
+}
+
+/* Parking lot marker: Cyan */
+.facility-marker.parking-marker .facility-ring {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+}
+.facility-marker.parking-marker .facility-dot {
+    background-color: var(--accent-cyan);
+}
+
+@keyframes facilityPulse {
+    0% {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(2.0);
+        opacity: 0;
+    }
+}
+
+/* Facility details chips */
+.facility-type-tag {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-yellow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.service-tag {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.service-tag.parking-tag {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}

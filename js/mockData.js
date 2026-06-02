@@ -106,3 +106,75 @@ const hazardTypes = {
     sudden_stop: "突發急停 / 外送臨停多",
     other: "其他道路潛在危險"
 };
+
+const mockGasStations = [
+    {
+        id: "gas_1",
+        title: "台灣中油 逢甲站 (河南路)",
+        lat: 24.1738,
+        lng: 120.6504,
+        type: "gas",
+        brand: "CPC",
+        hours: "24 小時營業",
+        services: ["自助加油", "輪胎充氣機", "公廁"],
+        description: "位於河南路二段，是逢甲商圈周邊最大的中油加油站，夜間尖峰時間常有排隊人潮。設有專屬機車加油動線與自助加油島。"
+    },
+    {
+        id: "gas_2",
+        title: "台灣中油 直營西屯路站",
+        lat: 24.1685,
+        lng: 120.6416,
+        type: "gas",
+        brand: "CPC",
+        hours: "06:00 - 23:00",
+        services: ["人工加油", "輪胎充氣機", "洗車"],
+        description: "中油直營站，油質有保障。機車加油車道寬敞，適合西屯路通勤往市區的騎士順路加油。"
+    },
+    {
+        id: "gas_3",
+        title: "台塑石油 全國逢甲站 (福星北路)",
+        lat: 24.1832,
+        lng: 120.6441,
+        type: "gas",
+        brand: "FPCC",
+        hours: "24 小時營業",
+        services: ["自助加油", "洗車", "超商"],
+        description: "位於福星北路與漢翔路口附近，加油島空間寬敞，提供自助加油優惠，自助加油設備非常新穎好用。"
+    }
+];
+
+const mockParkingLots = [
+    {
+        id: "parking_1",
+        title: "逢甲大學福星校區機車停車場",
+        lat: 24.1818,
+        lng: 120.6471,
+        type: "parking",
+        fee: "憑學生證感應免費",
+        spaces: "約 1200 格",
+        features: ["遮雨棚", "電子閘門", "全天候監控"],
+        description: "專供逢甲學生與教職員使用的機車停車場，內部規劃完善，有大面積遮雨棚防曬防雨，是學生停放愛車的首選。"
+    },
+    {
+        id: "parking_2",
+        title: "福星公有停車場 (星巴克旁機車區)",
+        lat: 24.1789,
+        lng: 120.6445,
+        type: "parking",
+        fee: "計次 20 元 / 天",
+        spaces: "約 250 格",
+        features: ["室外格位", "路邊收費"],
+        description: "鄰近逢甲麥當勞與星巴克，出入商圈極為便利，公有收費管理安全性佳，是逛街與用餐騎士的熱門停放點。"
+    },
+    {
+        id: "parking_3",
+        title: "逢甲文華公有立體停車場 (機車區)",
+        lat: 24.1768,
+        lng: 120.6495,
+        type: "parking",
+        fee: "計次 20 元 / 天",
+        spaces: "約 300 格",
+        features: ["室內防雨", "車牌辨識", "電子支付"],
+        description: "文華立體停車場附設的室內機車區，位於文華路旁。下雨天停放可免於淋雨，且有管理員巡邏，安全性極高。"
+    }
+];
