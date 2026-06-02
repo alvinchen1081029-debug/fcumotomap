@@ -29,6 +29,25 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:root[data-theme="light"] {
+    --bg-primary: #f3f4f6;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e5e7eb;
+    
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+    
+    --glow-red: 0 0 15px rgba(239, 68, 68, 0.25);
+    --glow-orange: 0 0 15px rgba(249, 115, 22, 0.25);
+    --glow-blue: 0 0 15px rgba(59, 130, 246, 0.25);
+    --glow-green: 0 0 15px rgba(16, 185, 129, 0.25);
+}
+
 /* Base Styles */
 * {
     margin: 0;
@@ -1133,3 +1152,198 @@ header {
 .level-5 .custom-pin { background-color: #ef4444; }
 .level-4 .custom-pin { background-color: #f97316; }
 .level-3 .custom-pin { background-color: #f59e0b; }
+
+/* ==========================================================================
+   Day/Night Commuter Theme Toggle & Left Turn Spec Styles
+   ========================================================================== */
+
+.theme-toggle-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    padding: 0.4rem 1rem;
+    border-radius: 30px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-smooth);
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+    box-shadow: var(--glow-blue);
+}
+
+.filter-options-interactive {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.filter-checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.filter-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.custom-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid var(--glass-border);
+    background: rgba(10, 12, 16, 0.3);
+    position: relative;
+    transition: var(--transition-smooth);
+}
+
+.filter-checkbox-container:hover .custom-checkbox {
+    border-color: var(--accent-blue);
+}
+
+.custom-checkbox.danger {
+    border-color: rgba(239, 68, 68, 0.4);
+}
+.custom-checkbox.leftturn {
+    border-color: rgba(6, 182, 212, 0.4);
+}
+
+.filter-checkbox-container input:checked ~ .custom-checkbox.danger {
+    background: var(--accent-red);
+    border-color: var(--accent-red);
+    box-shadow: var(--glow-red);
+}
+
+.filter-checkbox-container input:checked ~ .custom-checkbox.leftturn {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+.custom-checkbox::after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.filter-checkbox-container input:checked ~ .custom-checkbox::after {
+    display: block;
+}
+
+.filter-legend-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: 0.75rem 0;
+}
+
+.badge.leftturn-badge {
+    background: rgba(6, 182, 212, 0.2);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+.left-turn-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.metric-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.6rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.25rem;
+}
+
+:root[data-theme="light"] .metric-item {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.metric-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.metric-title i {
+    font-size: 0.75rem;
+}
+
+.metric-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+}
+
+:root[data-theme="light"] .metric-value {
+    color: var(--text-primary);
+}
+
+/* Pulsing markers for Left Turn indicators */
+.hazard-pulse-marker.level-leftturn .pulse-ring {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px var(--accent-cyan);
+}
+
+.hazard-pulse-marker.level-leftturn .pulse-dot {
+    background-color: var(--accent-cyan);
+}
+
+/* Dark mode leaflet popup text adjustment */
+.custom-map-tooltip {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme="light"] .glass-panel {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+:root[data-theme="light"] .search-box {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme="light"] .search-box input {
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .description-box {
+    background: rgba(0, 0, 0, 0.02);
+}
+

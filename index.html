@@ -29,6 +29,11 @@
         </div>
 
         <div class="header-stats">
+            <!-- Day/Night Commuting Mode Toggle -->
+            <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換日夜騎乘地圖樣式">
+                <i class="fas fa-sun"></i> <span>☀️ 日間清晰</span>
+            </button>
+            
             <div class="stat-pill spots">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>危險路標:</span>
@@ -58,14 +63,32 @@
             <div class="glass-panel">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="search-input" placeholder="搜尋危險路段、交叉路口或分類...">
+                    <input type="text" id="search-input" placeholder="搜尋路段、交叉路口、或待轉區...">
                 </div>
+                
                 <div class="filter-group">
+                    <div class="filter-title">資訊圖層篩選 (點擊切換)</div>
+                    <div class="filter-options-interactive">
+                        <label class="filter-checkbox-container">
+                            <input type="checkbox" id="toggle-danger-layer" checked>
+                            <span class="custom-checkbox danger"></span>
+                            <span class="filter-text">⚠️ 顯示危險路段標記</span>
+                        </label>
+                        <label class="filter-checkbox-container">
+                            <input type="checkbox" id="toggle-leftturn-layer" checked>
+                            <span class="custom-checkbox leftturn"></span>
+                            <span class="filter-text">🔄 顯示兩段式左轉提示</span>
+                        </label>
+                    </div>
+                    
+                    <div class="filter-legend-divider"></div>
+                    
                     <div class="filter-title">地圖圖例說明</div>
                     <div class="filter-options">
                         <span class="filter-label"><span class="badge danger-5">★ 5</span> 極度危險 (易出事 / 瓶頸路段)</span>
                         <span class="filter-label"><span class="badge danger-4">★ 4</span> 高度危險 (違停 / 視線死角多)</span>
                         <span class="filter-label"><span class="badge danger-3">★ 3</span> 中度危險 (車流大 / 易有急停)</span>
+                        <span class="filter-label"><span class="badge leftturn-badge">待轉</span> 兩段式左轉提示點</span>
                     </div>
                 </div>
             </div>
@@ -115,6 +138,27 @@
                     </div>
 
                     <h2 id="detail-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">逢甲路與福星路口</h2>
+                    
+                    <!-- Left Turn Intersection Evaluation Panel (Visible only for Left Turn points) -->
+                    <div id="detail-left-turn-specs" style="display: none; margin-bottom: 0.5rem;">
+                        <div class="form-group">
+                            <div class="section-label">🔄 兩段式待轉區評估</div>
+                            <div class="left-turn-metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-expand-arrows-alt"></i> 待轉區空間</span>
+                                    <span class="metric-value" id="metric-waiting-size">狹小</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-users"></i> 尖峰擁擠度</span>
+                                    <span class="metric-value" id="metric-crowd-level">極高</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-shield-alt"></i> 安全感評級</span>
+                                    <span class="metric-value" id="metric-safety-rating">★★★☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="form-group">
                         <div class="section-label">騎士回報詳情</div>

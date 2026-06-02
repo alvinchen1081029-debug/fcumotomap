@@ -1,8 +1,12 @@
 // FCU Moto Map - Danger Rating System Mock Application Logic
 
 let points = [];
+let leftTurnPoints = [];
 let map;
 let markers = {};
+let leftTurnMarkers = {};
+let showDangerLayer = true;
+let showLeftTurnLayer = true;
 let selectedPoint = null;
 let isAddingMode = false;
 let newPointLatLng = null;
@@ -10,11 +14,14 @@ let currentRatingInput = 5;
 let userVotes = {}; // Format: { pointId: 'up' | 'down' | null }
 let heatmapLayerGroup = null;
 let isHeatmapActive = false;
+let currentTheme = 'dark';
+let tileLayer = null;
 
 // Initialize Application when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     // Clone mock data to local array to allow in-memory modifications
     points = JSON.parse(JSON.stringify(mockDangerPoints));
+    leftTurnPoints = JSON.parse(JSON.stringify(mockLeftTurnPoints));
     
     initMap();
     renderDangerPoints();
@@ -39,11 +46,8 @@ function initMap() {
         position: 'bottomright'
     }).addTo(map);
 
-    // Dark Map Style (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd'
-    }).addTo(map);
+    // Initial tile layer load (default to dark mode)
+    setMapStyle('dark');
 
     heatmapLayerGroup = L.layerGroup().addTo(map);
 
@@ -51,8 +55,39 @@ function initMap() {
     map.on('click', handleMapClick);
 }
 
+// Seamlessly switch map tile layers between day light and night dark
+function setMapStyle(style) {
+    if (tileLayer) {
+        map.removeLayer(tileLayer);
+    }
+    
+    let url;
+    if (style === 'light') {
+        url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    } else {
+        url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    }
+    
+    tileLayer = L.tileLayer(url, {
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }).addTo(map);
+}
+
 // Generate animated HTML pulsing icon based on danger level
-function createPulsingIcon(dangerLevel) {
+function createPulsingIcon(dangerLevel, isLeftTurn = false) {
+    if (isLeftTurn) {
+        return L.divIcon({
+            className: `hazard-pulse-marker level-leftturn`,
+            html: `
+                <div class="pulse-ring"></div>
+                <div class="pulse-dot" style="display: flex; justify-content: center; align-items: center;"><i class="fas fa-redo" style="color: white; font-size: 6px; transform: rotate(90deg);"></i></div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+    }
+    
     let levelClass = "level-3";
     if (dangerLevel >= 5) levelClass = "level-5";
     else if (dangerLevel >= 4) levelClass = "level-4";
@@ -70,38 +105,71 @@ function createPulsingIcon(dangerLevel) {
 
 // Render danger points to Leaflet Map and List View
 function renderDangerPoints() {
-    // Clear existing markers
+    // Clear existing danger markers
     for (let id in markers) {
         map.removeLayer(markers[id]);
     }
     markers = {};
 
-    points.forEach(point => {
-        // Create custom neon pulsing marker
-        const marker = L.marker([point.lat, point.lng], {
-            icon: createPulsingIcon(point.dangerLevel)
-        });
+    // Clear existing left turn markers
+    for (let id in leftTurnMarkers) {
+        map.removeLayer(leftTurnMarkers[id]);
+    }
+    leftTurnMarkers = {};
 
-        // Add custom tooltip that displays on hover
-        marker.bindTooltip(`
-            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
-                <span style="color: var(--accent-red); margin-right: 5px;">★ ${point.dangerLevel}</span> ${point.title}
-            </div>
-        `, {
-            direction: 'top',
-            offset: [0, -10],
-            opacity: 0.9,
-            className: 'custom-map-tooltip'
-        });
+    // Render Danger Points if checked
+    if (showDangerLayer) {
+        points.forEach(point => {
+            const marker = L.marker([point.lat, point.lng], {
+                icon: createPulsingIcon(point.dangerLevel, false)
+            });
 
-        // Click event opens custom details sidebar
-        marker.on('click', () => {
-            showPointDetails(point);
-        });
+            marker.bindTooltip(`
+                <div style="background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                    <span style="color: var(--accent-red); margin-right: 5px;">★ ${point.dangerLevel}</span> ${point.title}
+                </div>
+            `, {
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.95,
+                className: 'custom-map-tooltip'
+            });
 
-        marker.addTo(map);
-        markers[point.id] = marker;
-    });
+            marker.on('click', () => {
+                showPointDetails(point);
+            });
+
+            marker.addTo(map);
+            markers[point.id] = marker;
+        });
+    }
+
+    // Render Left Turn Points if checked
+    if (showLeftTurnLayer) {
+        leftTurnPoints.forEach(point => {
+            const marker = L.marker([point.lat, point.lng], {
+                icon: createPulsingIcon(point.dangerLevel, true)
+            });
+
+            marker.bindTooltip(`
+                <div style="background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                    <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-redo"></i> 待轉</span> ${point.title}
+                </div>
+            `, {
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.95,
+                className: 'custom-map-tooltip'
+            });
+
+            marker.on('click', () => {
+                showPointDetails(point);
+            });
+
+            marker.addTo(map);
+            leftTurnMarkers[point.id] = marker;
+        });
+    }
 
     renderListView();
     if (isHeatmapActive) {
@@ -111,10 +179,11 @@ function renderDangerPoints() {
 
 // Update Header Stats
 function updateGlobalStats() {
-    document.getElementById("total-danger-spots").innerText = points.length;
+    document.getElementById("total-danger-spots").innerText = points.length + leftTurnPoints.length;
     
-    const totalVotes = points.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
-    document.getElementById("total-votes-count").innerText = totalVotes;
+    const totalDangerVotes = points.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
+    const totalLeftTurnVotes = leftTurnPoints.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
+    document.getElementById("total-votes-count").innerText = totalDangerVotes + totalLeftTurnVotes;
 }
 
 // Render Sidebar List View
@@ -122,21 +191,42 @@ function renderListView() {
     const listContainer = document.getElementById("drawer-items-list");
     listContainer.innerHTML = "";
 
-    // Sort by danger level descending
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    let combined = [];
+    if (showDangerLayer) {
+        combined = [...combined, ...points];
+    }
+    if (showLeftTurnLayer) {
+        combined = [...combined, ...leftTurnPoints];
+    }
 
-    sortedPoints.forEach(point => {
+    // Sort by danger level descending
+    combined.sort((a, b) => b.dangerLevel - a.dangerLevel);
+
+    if (combined.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1.5rem 0;">目前無符合篩選條件的標記。</div>`;
+        return;
+    }
+
+    combined.forEach(point => {
         const item = document.createElement("div");
         item.className = "drawer-item";
+        
+        let badgeHtml = "";
+        if (point.isLeftTurn) {
+            badgeHtml = `<span class="badge leftturn-badge">兩段式左轉</span>`;
+        } else {
+            badgeHtml = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        }
+
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    <span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>
+                    ${badgeHtml}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
-            <div class="drawer-item-votes">
+            <div class="drawer-item-votes" style="color: ${point.isLeftTurn ? 'var(--accent-cyan)' : 'var(--accent-blue)'}">
                 <i class="fas fa-thumbs-up"></i> ${point.upvotes}
             </div>
         `;
@@ -169,18 +259,51 @@ function showPointDetails(point) {
     
     // Fill Details
     document.getElementById("detail-title").innerText = point.title;
-    document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
     document.getElementById("detail-description").innerText = point.description;
     document.getElementById("detail-reporter").innerText = point.reporter;
     document.getElementById("detail-time").innerText = point.reportTime;
 
-    // Draw Stars
-    const starContainer = document.getElementById("detail-stars");
-    starContainer.innerHTML = "";
-    for (let i = 1; i <= 5; i++) {
-        const star = document.createElement("i");
-        star.className = i <= point.dangerLevel ? "fas fa-star" : "far fa-star";
-        starContainer.appendChild(star);
+    // Handle Left Turn special specs
+    if (point.isLeftTurn) {
+        document.getElementById("detail-left-turn-specs").style.display = "block";
+        document.getElementById("metric-waiting-size").innerText = point.waitingAreaSize;
+        document.getElementById("metric-crowd-level").innerText = point.crowdLevel;
+        
+        const safetyContainer = document.getElementById("metric-safety-rating");
+        safetyContainer.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement("i");
+            star.className = i <= point.safetyRating ? "fas fa-star" : "far fa-star";
+            star.style.color = "var(--accent-cyan)";
+            star.style.fontSize = "0.75rem";
+            safetyContainer.appendChild(star);
+        }
+        
+        // Custom headers for two-stage left turn
+        document.getElementById("detail-hazard-name").innerText = "🔄 兩段式左轉提示";
+        document.getElementById("detail-hazard-name").style.color = "var(--accent-cyan)";
+        document.getElementById("detail-hazard-name").style.borderColor = "rgba(6, 182, 212, 0.4)";
+        document.getElementById("detail-hazard-name").style.background = "rgba(6, 182, 212, 0.15)";
+        
+        // Hide standard hazard stars in left turn mode
+        document.getElementById("detail-stars").style.display = "none";
+    } else {
+        document.getElementById("detail-left-turn-specs").style.display = "none";
+        
+        document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
+        document.getElementById("detail-hazard-name").style.color = "";
+        document.getElementById("detail-hazard-name").style.borderColor = "";
+        document.getElementById("detail-hazard-name").style.background = "";
+        
+        // Draw standard hazard Stars
+        document.getElementById("detail-stars").style.display = "flex";
+        const starContainer = document.getElementById("detail-stars");
+        starContainer.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement("i");
+            star.className = i <= point.dangerLevel ? "fas fa-star" : "far fa-star";
+            starContainer.appendChild(star);
+        }
     }
 
     // Load Votes
@@ -538,6 +661,40 @@ function initUIEvents() {
         document.getElementById("sidebar-right").classList.remove("active");
     });
 
+    // Day/Night Theme Toggle
+    const themeBtn = document.getElementById("theme-toggle-btn");
+    themeBtn.addEventListener("click", () => {
+        if (currentTheme === 'dark') {
+            currentTheme = 'light';
+            document.documentElement.setAttribute('data-theme', 'light');
+            themeBtn.innerHTML = `<i class="fas fa-moon"></i> <span>🌙 夜間高感光</span>`;
+            setMapStyle('light');
+            showNotificationToast("☀️ 已切換至日間清晰地圖樣式");
+        } else {
+            currentTheme = 'dark';
+            document.documentElement.removeAttribute('data-theme');
+            themeBtn.innerHTML = `<i class="fas fa-sun"></i> <span>☀️ 日間清晰</span>`;
+            setMapStyle('dark');
+            showNotificationToast("🌙 已切換至夜間高感光地圖樣式");
+        }
+    });
+
+    // Checkboxes for toggling layers
+    const dangerCheckbox = document.getElementById("toggle-danger-layer");
+    const leftTurnCheckbox = document.getElementById("toggle-leftturn-layer");
+
+    dangerCheckbox.addEventListener("change", (e) => {
+        showDangerLayer = e.target.checked;
+        renderDangerPoints();
+        showNotificationToast(showDangerLayer ? "⚠️ 已顯示危險路段標記" : "⚠️ 已隱藏危險路段標記");
+    });
+
+    leftTurnCheckbox.addEventListener("change", (e) => {
+        showLeftTurnLayer = e.target.checked;
+        renderDangerPoints();
+        showNotificationToast(showLeftTurnLayer ? "🔄 已顯示兩段式左轉提示" : "🔄 已隱藏兩段式左轉提示");
+    });
+
     // List Drawer collapsible behaviour
     const drawer = document.getElementById("list-drawer");
     const drawerToggle = document.getElementById("drawer-toggle");
@@ -612,16 +769,19 @@ function showModal(modalId) {
     document.getElementById(modalId).classList.add("active");
 }
 
+// Modal hide actions
 function hideModal(modalId) {
     document.getElementById(modalId).classList.remove("active");
 }
 
 // Filter markers based on search query
 function filterMarkersAndList(query) {
+    // Filter Danger points
     points.forEach(point => {
-        const matches = point.title.toLowerCase().includes(query) || 
+        const matches = showDangerLayer && (
+                        point.title.toLowerCase().includes(query) || 
                         point.description.toLowerCase().includes(query) ||
-                        point.hazardTypeName.toLowerCase().includes(query);
+                        point.hazardTypeName.toLowerCase().includes(query));
         
         const marker = markers[point.id];
         if (marker) {
@@ -633,29 +793,63 @@ function filterMarkersAndList(query) {
         }
     });
 
-    // Refresh Drawer list
+    // Filter Left Turn points
+    leftTurnPoints.forEach(point => {
+        const matches = showLeftTurnLayer && (
+                        point.title.toLowerCase().includes(query) || 
+                        point.description.toLowerCase().includes(query));
+        
+        const marker = leftTurnMarkers[point.id];
+        if (marker) {
+            if (matches) {
+                if (!map.hasLayer(marker)) marker.addTo(map);
+            } else {
+                if (map.hasLayer(marker)) map.removeLayer(marker);
+            }
+        }
+    });
+
+    // Refresh Drawer list with matched items
     const listContainer = document.getElementById("drawer-items-list");
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
-    
     listContainer.innerHTML = "";
-    sortedPoints.forEach(point => {
+
+    let combined = [];
+    if (showDangerLayer) {
+        combined = [...combined, ...points];
+    }
+    if (showLeftTurnLayer) {
+        combined = [...combined, ...leftTurnPoints];
+    }
+
+    combined.sort((a, b) => b.dangerLevel - a.dangerLevel);
+
+    combined.forEach(point => {
+        const isLeft = point.isLeftTurn;
         const matches = point.title.toLowerCase().includes(query) || 
                         point.description.toLowerCase().includes(query) ||
-                        point.hazardTypeName.toLowerCase().includes(query);
+                        (!isLeft && point.hazardTypeName.toLowerCase().includes(query));
         
         if (!matches) return;
 
         const item = document.createElement("div");
         item.className = "drawer-item";
+        
+        let badgeHtml = "";
+        if (isLeft) {
+            badgeHtml = `<span class="badge leftturn-badge">兩段式左轉</span>`;
+        } else {
+            badgeHtml = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        }
+
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    <span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>
+                    ${badgeHtml}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
-            <div class="drawer-item-votes">
+            <div class="drawer-item-votes" style="color: ${isLeft ? 'var(--accent-cyan)' : 'var(--accent-blue)'}">
                 <i class="fas fa-thumbs-up"></i> ${point.upvotes}
             </div>
         `;

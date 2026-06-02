@@ -106,3 +106,105 @@ const hazardTypes = {
     sudden_stop: "突發急停 / 外送臨停多",
     other: "其他道路潛在危險"
 };
+
+const mockLeftTurnPoints = [
+    {
+        id: 101,
+        title: "逢甲路與福星路口 (麥當勞旁)",
+        lat: 24.17865,
+        lng: 120.64655,
+        isLeftTurn: true,
+        dangerLevel: 4, // 用作危險度或安全度參考，為求一致，我們在危險評價系統用星級 (4)
+        waitingAreaSize: "狹小 (尖峰易溢出至車道)",
+        crowdLevel: "極高 (下課及夜市時段擁擠)",
+        safetyRating: 2, // 待轉區安全評分 2/5 (偏低)
+        reporter: "資工二乙",
+        reportTime: "2026-05-28 12:10",
+        description: "逢甲路往福星路方向需要兩段式左轉。待轉區格子畫得非常窄小，只要下課尖峰有5台以上機車，待轉區就會直接滿出來到福星路的直行車流中，騎士安全堪憂！建議尖峰時間放慢車速，盡量靠右停靠。",
+        upvotes: 38,
+        downvotes: 2,
+        comments: [
+            { author: "逢甲小鋼炮", date: "2026-05-28 13:00", content: "真的！每次晚上待轉都覺得自己後半截車屁股在馬路上被車子刷卡。" },
+            { author: "安全防禦駕駛", date: "2026-05-29 09:15", content: "建議如果車太多，可以考慮直行到下一個路口再繞回來，避開這個待轉格。" }
+        ]
+    },
+    {
+        id: 102,
+        title: "河南路二段與福星路口 (重要幹道樞紐)",
+        lat: 24.17510,
+        lng: 120.65350,
+        isLeftTurn: true,
+        dangerLevel: 5,
+        waitingAreaSize: "中等 (但車流龐大，仍嫌不足)",
+        crowdLevel: "極高 (通勤尖峰車滿為患)",
+        safetyRating: 1, // 安全評分 1/5 (極度危險)
+        reporter: "交通守護星",
+        reportTime: "2026-05-27 08:30",
+        description: "由福星路左轉河南路二段必須兩段式左轉。因河南路是雙向多線道且車速極快，在待轉區等待時會直接迎面承受大流量的右轉與直行車流。綠燈起步時，左轉車輛常與直行車流交織，是極易發生擦撞的交界路口。",
+        upvotes: 72,
+        downvotes: 1,
+        comments: [
+            { author: "通勤小跑車", date: "2026-05-27 08:45", content: "早上8點這裡的待轉區根本是修羅場，超多人不禮讓的。" },
+            { author: "逢大阿甘", date: "2026-05-28 17:50", content: "起步時千萬別衝第一，一定要看清楚對向有沒有搶快的直行車！" }
+        ]
+    },
+    {
+        id: 103,
+        title: "西屯路二段與逢甲路口 (狹窄路口待轉)",
+        lat: 24.17420,
+        lng: 120.64530,
+        isLeftTurn: true,
+        dangerLevel: 5,
+        waitingAreaSize: "極度狹小 (約僅容納3台機車)",
+        crowdLevel: "高 (學生與買便當人潮多)",
+        safetyRating: 2,
+        reporter: "機車難民",
+        reportTime: "2026-05-26 18:00",
+        description: "逢甲路左轉西屯路二段必須兩段式左轉。待轉區空間被壓縮在狹窄的路肩，且路口有公車站牌與違停。一旦有大型公車經過，公車車身會非常貼近待轉格，極具壓迫感。強烈建議新手骑士要特別注意車身間距。",
+        upvotes: 49,
+        downvotes: 3,
+        comments: [
+            { author: "公車刷卡機", date: "2026-05-26 18:22", content: "每次公車切進來，我都以為我的照後鏡要被撞掉了，超可怕。" },
+            { author: "FCU_Rider", date: "2026-05-27 12:10", content: "這待轉格設計根本是陷阱，路那麼小還要兩段轉。" }
+        ]
+    },
+    {
+        id: 104,
+        title: "河南路二段與西屯路二段路口 (大型多岔路口)",
+        lat: 24.17240,
+        lng: 120.64890,
+        isLeftTurn: true,
+        dangerLevel: 3,
+        waitingAreaSize: "寬敞 (標線相對清晰)",
+        crowdLevel: "中等 (路幅較大)",
+        safetyRating: 4, // 安全評分 4/5 (相對安全)
+        reporter: "機車大叔",
+        reportTime: "2026-05-25 15:40",
+        description: "此路口為大型四岔路口，往西屯路或河南路皆有清楚的兩段式左轉標誌。待轉格空間非常充沛且退縮在安全島旁，能有效避開直行車流。唯獨需注意黃燈亮起時，搶黃燈的直行車速極快，起步時應確認完全紅燈後再前行。",
+        upvotes: 21,
+        downvotes: 0,
+        comments: [
+            { author: "安全騎士", date: "2026-05-25 16:00", content: "這裡的待轉區算是逢甲附近設計得最好的了，停起來很有安全感。" }
+        ]
+    },
+    {
+        id: 105,
+        title: "福星北路與黎明路三段路口 (大學城外圍幹道)",
+        lat: 24.18340,
+        lng: 120.64810,
+        isLeftTurn: true,
+        dangerLevel: 4,
+        waitingAreaSize: "中等 (無安全島遮蔽)",
+        crowdLevel: "高 (往僑光、中科車流大)",
+        safetyRating: 3,
+        reporter: "僑光機車俠",
+        reportTime: "2026-05-24 10:15",
+        description: "黎明路三段左轉福星北路（往逢甲大學後門/僑光科大方向）。待轉區位於馬路正中間延伸處，後方完全沒有任何防撞石柱或安全島遮蔽，機車騎士暴露於黎明路疾駛而來的直行車流前。夜市結束後或深夜車速快，需特別警惕後方來車。",
+        upvotes: 35,
+        downvotes: 1,
+        comments: [
+            { author: "中科通勤族", date: "2026-05-24 11:00", content: "半夜騎這條路大家車速都破60，待轉時要一直盯著後視鏡，很怕被追撞。" },
+            { author: "新手保衛者", date: "2026-05-25 14:20", content: "建議把車燈維持開啟，增加夜間顯眼度。" }
+        ]
+    }
+];
