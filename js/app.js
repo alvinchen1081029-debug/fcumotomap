@@ -12,6 +12,10 @@ let heatmapLayerGroup = null;
 let isHeatmapActive = false;
 let favorites = []; // Array of favorited point IDs
 let currentDrawerTab = 'all'; // 'all' or 'fav'
+let showGasStations = false;
+let showParkingLots = false;
+let gasLayerGroup = null;
+let parkingLayerGroup = null;
 
 // Initialize Application when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -59,6 +63,8 @@ function initMap() {
     }).addTo(map);
 
     heatmapLayerGroup = L.layerGroup().addTo(map);
+    gasLayerGroup = L.layerGroup().addTo(map);
+    parkingLayerGroup = L.layerGroup().addTo(map);
 
     // Map Click Handler
     map.on('click', handleMapClick);
@@ -195,6 +201,8 @@ function showPointDetails(point) {
     detailsView.style.display = "block";
     formView.style.display = "none";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
     
     // Fill Details
     document.getElementById("detail-title").innerText = point.title;
@@ -409,6 +417,8 @@ function openAddForm(lat, lng) {
     detailsView.style.display = "none";
     formView.style.display = "block";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
 
     // Fill form coords
     document.getElementById("form-lat-lng").innerText = `已選座標: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -580,6 +590,52 @@ function initUIEvents() {
         document.getElementById("sidebar-right").classList.remove("active");
     });
 
+    // Toggle Gas Stations
+    const gasBtn = document.getElementById("toggle-gas-stations");
+    if (gasBtn) {
+        gasBtn.addEventListener("click", () => {
+            showGasStations = !showGasStations;
+            if (showGasStations) {
+                gasBtn.classList.add("active");
+                showNotificationToast("⛽ 已開啟附近加油站圖層");
+            } else {
+                gasBtn.classList.remove("active");
+                showNotificationToast("已隱藏加油站圖層");
+                
+                // If currently showing a gas station detail, close the sidebar
+                const facView = document.getElementById("sidebar-facility-view");
+                const typeName = document.getElementById("facility-type-name");
+                if (facView && facView.style.display === "block" && typeName && typeName.innerText === "加油站") {
+                    document.getElementById("sidebar-right").classList.remove("active");
+                }
+            }
+            renderGasStations();
+        });
+    }
+
+    // Toggle Parking Lots
+    const parkingBtn = document.getElementById("toggle-parking-lots");
+    if (parkingBtn) {
+        parkingBtn.addEventListener("click", () => {
+            showParkingLots = !showParkingLots;
+            if (showParkingLots) {
+                parkingBtn.classList.add("active");
+                showNotificationToast("🅿️ 已開啟機車停車場圖層");
+            } else {
+                parkingBtn.classList.remove("active");
+                showNotificationToast("已隱藏停車場圖層");
+
+                // If currently showing a parking lot detail, close the sidebar
+                const facView = document.getElementById("sidebar-facility-view");
+                const typeName = document.getElementById("facility-type-name");
+                if (facView && facView.style.display === "block" && typeName && typeName.innerText === "機車停車場") {
+                    document.getElementById("sidebar-right").classList.remove("active");
+                }
+            }
+            renderParkingLots();
+        });
+    }
+
     // Favorite toggle button in details
     const favBtn = document.getElementById("favorite-toggle-btn");
     if (favBtn) {
@@ -686,6 +742,8 @@ function openUserSettingsPanel() {
     detailsView.style.display = "none";
     formView.style.display = "none";
     userSettingsView.style.display = "block";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
 
     // Render favorites list
     renderSettingsFavoritesList();
@@ -893,4 +951,179 @@ function renderSettingsFavoritesList() {
         
         container.appendChild(card);
     });
+}
+
+// Create customized facility div icon
+function createFacilityIcon(type) {
+    if (type === 'gas') {
+        return L.divIcon({
+            className: 'facility-marker gas-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-gas-pump"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    } else if (type === 'parking') {
+        return L.divIcon({
+            className: 'facility-marker parking-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-parking"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    }
+}
+
+// Render Gas Stations to Map
+function renderGasStations() {
+    gasLayerGroup.clearLayers();
+    if (!showGasStations) return;
+
+    mockGasStations.forEach(station => {
+        const marker = L.marker([station.lat, station.lng], {
+            icon: createFacilityIcon('gas')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-green); margin-right: 5px;"><i class="fas fa-gas-pump"></i></span> ${station.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(station);
+        });
+
+        marker.addTo(gasLayerGroup);
+    });
+}
+
+// Render Parking Lots to Map
+function renderParkingLots() {
+    parkingLayerGroup.clearLayers();
+    if (!showParkingLots) return;
+
+    mockParkingLots.forEach(lot => {
+        const marker = L.marker([lot.lat, lot.lng], {
+            icon: createFacilityIcon('parking')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-parking"></i></span> ${lot.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(lot);
+        });
+
+        marker.addTo(parkingLayerGroup);
+    });
+}
+
+// Display Facility Details in Right Sidebar (VIEW 4)
+function showFacilityDetails(facility) {
+    selectedPoint = null; // Clear selected danger point
+    isAddingMode = false;
+    const onboardingToast = document.getElementById("onboarding-toast");
+    if (onboardingToast) onboardingToast.classList.remove("show");
+
+    const sidebar = document.getElementById("sidebar-right");
+    const detailsView = document.getElementById("sidebar-details-view");
+    const formView = document.getElementById("sidebar-form-view");
+    const userSettingsView = document.getElementById("sidebar-settings-view");
+    const facilityView = document.getElementById("sidebar-facility-view");
+
+    if (detailsView) detailsView.style.display = "none";
+    if (formView) formView.style.display = "none";
+    if (userSettingsView) userSettingsView.style.display = "none";
+    if (facilityView) facilityView.style.display = "block";
+
+    // Set fields
+    document.getElementById("facility-title").innerText = facility.title;
+    document.getElementById("facility-description").innerText = facility.description;
+
+    const typeNameEl = document.getElementById("facility-type-name");
+    const badgeEl = document.getElementById("facility-badge");
+    const extraEl = document.getElementById("facility-extra");
+    const servicesContainer = document.getElementById("facility-services");
+
+    if (servicesContainer) {
+        servicesContainer.innerHTML = "";
+    }
+
+    if (facility.type === 'gas') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "加油站";
+            typeNameEl.style.color = "var(--accent-green)";
+            typeNameEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
+            typeNameEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+        
+        if (badgeEl) {
+            badgeEl.innerText = facility.hours;
+            badgeEl.style.color = "var(--accent-green)";
+            badgeEl.style.borderColor = "rgba(16, 185, 129, 0.4)";
+            badgeEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `品牌: ${facility.brand === 'CPC' ? '台灣中油' : '台塑石油'}`;
+
+        // Render services
+        if (servicesContainer) {
+            facility.services.forEach(service => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag";
+                chip.innerHTML = `<i class="fas fa-check-circle"></i> ${service}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    } else if (facility.type === 'parking') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "機車停車場";
+            typeNameEl.style.color = "var(--accent-cyan)";
+            typeNameEl.style.borderColor = "rgba(6, 182, 212, 0.3)";
+            typeNameEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (badgeEl) {
+            badgeEl.innerText = facility.fee;
+            badgeEl.style.color = "var(--accent-cyan)";
+            badgeEl.style.borderColor = "rgba(6, 182, 212, 0.4)";
+            badgeEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `車位數: ${facility.spaces}`;
+
+        // Render features
+        if (servicesContainer) {
+            facility.features.forEach(feature => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag parking-tag";
+                chip.innerHTML = `<i class="fas fa-motorcycle"></i> ${feature}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    }
+
+    // Open sidebar
+    if (sidebar) sidebar.classList.add("active");
+
+    // Center map slightly shifted to the left
+    map.panTo([facility.lat, facility.lng - 0.0015]);
 }

@@ -68,6 +68,17 @@
                         <span class="filter-label"><span class="badge danger-3">★ 3</span> 中度危險 (車流大 / 易有急停)</span>
                     </div>
                 </div>
+                <div class="filter-group" style="margin-top: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 0.75rem;">
+                    <div class="filter-title">騎士友善設施</div>
+                    <div class="facility-toggles" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="facility-toggle-btn" id="toggle-gas-stations" type="button">
+                            <i class="fas fa-gas-pump"></i> 加油站
+                        </button>
+                        <button class="facility-toggle-btn" id="toggle-parking-lots" type="button">
+                            <i class="fas fa-parking"></i> 停車場
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Heatmap Mode Trigger -->
@@ -282,6 +293,38 @@
                         <button class="vote-btn" style="margin-top: 1rem; border-color: var(--accent-red); color: var(--accent-red);" onclick="showModal('login-modal')">
                             <i class="fas fa-sign-out-alt"></i> 模擬切換使用者帳戶
                         </button>
+                    </div>
+                </div>
+
+                <!-- VIEW 4: Facility Details -->
+                <div class="info-body" id="sidebar-facility-view" style="display: none;">
+                    <div class="hazard-meta">
+                        <span class="facility-type-tag" id="facility-type-name">加油站</span>
+                        <div id="facility-badge" class="badge danger-5" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">24H 營業</div>
+                    </div>
+
+                    <h2 id="facility-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">中油加油站</h2>
+                    
+                    <div class="form-group">
+                        <div class="section-label">設施服務詳情</div>
+                        <div class="description-box" id="facility-description">
+                            此加油站設有機車專用加油車道...
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="section-label">提供特色與服務</div>
+                        <div class="service-tags-container" id="facility-services" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.2rem;">
+                            <!-- JS will render service tags dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="reporter-card" style="border-top: 1px dashed var(--glass-border); padding-top: 0.75rem; margin-top: auto;">
+                        <div class="reporter-info">
+                            <div class="reporter-avatar"><i class="fas fa-shield-alt"></i></div>
+                            <div>資訊類別: <span style="color: var(--accent-green); font-weight: 600;">官方認證設施</span></div>
+                        </div>
+                        <div id="facility-extra" style="color: var(--text-secondary);"> CPC </div>
                     </div>
                 </div>
 
