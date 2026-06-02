@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     leftTurnPoints = JSON.parse(JSON.stringify(mockLeftTurnPoints));
     
     initMap();
-    renderDangerPoints();
+    renderPoints();
     updateGlobalStats();
     initUIEvents();
     initStarRatingBehavior();
@@ -50,6 +50,8 @@ function initMap() {
     setMapStyle('dark');
 
     heatmapLayerGroup = L.layerGroup().addTo(map);
+    gasLayerGroup = L.layerGroup().addTo(map);
+    parkingLayerGroup = L.layerGroup().addTo(map);
 
     // Map Click Handler
     map.on('click', handleMapClick);
@@ -92,11 +94,14 @@ function createPulsingIcon(dangerLevel, isLeftTurn = false) {
     if (dangerLevel >= 5) levelClass = "level-5";
     else if (dangerLevel >= 4) levelClass = "level-4";
     
+    const favClass = isFav ? " is-fav" : "";
+    const dotContent = isFav ? `<i class="fas fa-heart" style="color: white; font-size: 8px;"></i>` : "";
+    
     return L.divIcon({
-        className: `hazard-pulse-marker ${levelClass}`,
+        className: `hazard-pulse-marker ${levelClass}${favClass}`,
         html: `
             <div class="pulse-ring"></div>
-            <div class="pulse-dot"></div>
+            <div class="pulse-dot">${dotContent}</div>
         `,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
@@ -241,7 +246,7 @@ function renderListView() {
     });
 }
 
-// Show Danger Point Details in Sidebar
+// Show Danger/Toilet Point Details in Sidebar
 function showPointDetails(point) {
     selectedPoint = point;
     isAddingMode = false;
@@ -256,6 +261,8 @@ function showPointDetails(point) {
     detailsView.style.display = "block";
     formView.style.display = "none";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
     
     // Fill Details
     document.getElementById("detail-title").innerText = point.title;
@@ -332,6 +339,18 @@ function showPointDetails(point) {
     // Smoothly pan map center slightly to the left to avoid sidebar overlap on desktop
     const targetLng = point.lng - 0.0015; // Shift center slightly
     map.panTo([point.lat, targetLng]);
+}
+
+// Helper to toggle detail indicators
+function toggleIndicatorCard(elementId, isActive) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        if (isActive) {
+            el.className = "toilet-indicator-card active";
+        } else {
+            el.className = "toilet-indicator-card inactive";
+        }
+    }
 }
 
 // Render Comments List
@@ -490,6 +509,8 @@ function openAddForm(lat, lng) {
     detailsView.style.display = "none";
     formView.style.display = "block";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
 
     // Fill form coords
     document.getElementById("form-lat-lng").innerText = `已選座標: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -497,13 +518,60 @@ function openAddForm(lat, lng) {
     // Reset Form fields
     document.getElementById("form-title").value = "";
     document.getElementById("form-description").value = "";
-    document.getElementById("form-hazard-type").value = "illegal_parking";
+    
+    // Toggle form attributes based on mode
+    const isToilet = currentMode === 'toilet';
+    
+    // Toggle toilet fields
+    document.getElementById("form-toilet-attributes").style.display = isToilet ? "block" : "none";
+    document.getElementById("form-toilet-hours-group").style.display = isToilet ? "block" : "none";
+    
+    // Initialize stars style
+    const starsContainer = document.getElementById("form-rating-stars");
+    if (isToilet) {
+        starsContainer.className = "rating-stars-input toilet-stars";
+        document.getElementById("form-rating-label").innerText = "評定乾淨程度 (1為髒亂，5為極度乾淨)";
+        document.getElementById("form-title-label").innerText = "公共廁所名稱";
+        document.getElementById("form-title").placeholder = "例如：中油大雅加油站公廁";
+        document.getElementById("form-hazard-type-label").innerText = "公廁種類分類";
+        document.getElementById("form-desc-label").innerText = "公廁環境與停車描述";
+        document.getElementById("form-description").placeholder = "請描述該公廁的位置指引，以及給騎士的停車建議或使用心得。";
+        document.getElementById("form-submit-btn").innerHTML = '<i class="fas fa-check-circle"></i> 提交公共廁所回報';
+        
+        // Populate options with toilet types
+        populateFormHazardType(toiletTypes);
+    } else {
+        starsContainer.className = "rating-stars-input";
+        document.getElementById("form-rating-label").innerText = "評定危險星級 (1為低，5為極度危險)";
+        document.getElementById("form-title-label").innerText = "危險地段/路口名稱";
+        document.getElementById("form-title").placeholder = "例如：河南路二段與西安街口";
+        document.getElementById("form-hazard-type-label").innerText = "危險情況分類";
+        document.getElementById("form-desc-label").innerText = "具體危險路況描述";
+        document.getElementById("form-description").placeholder = "請詳細說明該路段何時最危險，有什麼潛在盲點？給其他騎士的避雷建議？";
+        document.getElementById("form-submit-btn").innerHTML = '<i class="fas fa-check-circle"></i> 提交危險標記回報';
+        
+        // Populate options with hazard types
+        populateFormHazardType(hazardTypes);
+    }
+    
     resetStarRatingInput();
 
     sidebar.classList.add("active");
     
     // Pan map to selection
     map.panTo([lat, lng - 0.0015]);
+}
+
+// Populate form hazard/toilet type select dropdown
+function populateFormHazardType(optionsMap) {
+    const select = document.getElementById("form-hazard-type");
+    select.innerHTML = "";
+    for (let key in optionsMap) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.innerText = optionsMap[key];
+        select.appendChild(opt);
+    }
 }
 
 // Star Rating input handler
@@ -543,7 +611,7 @@ function resetStarRatingInput() {
     highlightStars(5);
 }
 
-// Submit New Danger Point
+// Submit New Danger/Toilet Point
 function submitReport(event) {
     event.preventDefault();
 
@@ -552,45 +620,81 @@ function submitReport(event) {
     const description = document.getElementById("form-description").value.trim();
 
     if (!title || !description) {
-        alert("請完整填寫標題與詳細描述！");
+        alert("請完整填寫名稱與詳細描述！");
         return;
     }
 
-    const typeNames = {
-        illegal_parking: "臨停違停嚴重 / 視線死角",
-        crowded: "人車交織 / 路面狹窄油滑",
-        fast_lane_merge: "快慢車道匯流 / 轉彎未讓直行",
-        bad_design: "待轉區設計不良 / 道路設計缺失",
-        sudden_stop: "突發急停 / 外送臨停多",
-        other: "其他道路潛在危險"
-    };
+    if (currentMode === 'danger') {
+        const typeNames = {
+            illegal_parking: "臨停違停嚴重 / 視線死角",
+            crowded: "人車交織 / 路面狹窄油滑",
+            fast_lane_merge: "快慢車道匯流 / 轉彎未讓直行",
+            bad_design: "待轉區設計不良 / 道路設計缺失",
+            sudden_stop: "突發急停 / 外送臨停多",
+            other: "其他道路潛在危險"
+        };
 
-    const newPoint = {
-        id: points.length + 1,
-        title: title,
-        lat: newPointLatLng.lat,
-        lng: newPointLatLng.lng,
-        dangerLevel: currentRatingInput,
-        hazardType: typeKey,
-        hazardTypeName: typeNames[typeKey],
-        reporter: "逢甲新鮮人",
-        reportTime: getCurrentDateTimeString(),
-        description: description,
-        upvotes: 0,
-        downvotes: 0,
-        comments: []
-    };
+        const newPoint = {
+            id: points.length + 1,
+            title: title,
+            lat: newPointLatLng.lat,
+            lng: newPointLatLng.lng,
+            dangerLevel: currentRatingInput,
+            hazardType: typeKey,
+            hazardTypeName: typeNames[typeKey],
+            reporter: "逢甲新鮮人",
+            reportTime: getCurrentDateTimeString(),
+            description: description,
+            upvotes: 0,
+            downvotes: 0,
+            comments: []
+        };
 
-    // Push into in-memory storage
-    points.push(newPoint);
+        points.push(newPoint);
+        renderPoints();
+        updateGlobalStats();
+        showPointDetails(newPoint);
+        showNotificationToast("🎉 危險點回報成功！感謝您的守護！");
+    } else {
+        const typeNames = {
+            gas_station: "中油加油站公廁",
+            campus: "學校教學大樓公廁",
+            convenience_store: "超商附設公廁",
+            park: "市政公園公廁",
+            other: "其他公共廁所"
+        };
 
-    // Refresh Map and Sidebar details
-    renderDangerPoints();
-    updateGlobalStats();
-    showPointDetails(newPoint);
+        const hours = document.getElementById("form-toilet-hours").value.trim() || "24 小時開放";
+        const hasPaper = document.getElementById("form-has-paper").checked;
+        const isAccessible = document.getElementById("form-is-accessible").checked;
+        const motorcycleFriendly = document.getElementById("form-motorcycle-friendly").checked;
 
-    // Success Notification Toast
-    showNotificationToast("🎉 危險點回報成功！感謝您的守護！");
+        const newToilet = {
+            id: toiletPoints.length + 101, // offset to avoid conflict
+            title: title,
+            lat: newPointLatLng.lat,
+            lng: newPointLatLng.lng,
+            cleanliness: currentRatingInput,
+            toiletType: typeKey,
+            toiletTypeName: typeNames[typeKey],
+            hasPaper: hasPaper,
+            isAccessible: isAccessible,
+            motorcycleFriendly: motorcycleFriendly,
+            hours: hours,
+            reporter: "逢甲新鮮人",
+            reportTime: getCurrentDateTimeString(),
+            description: description,
+            upvotes: 0,
+            downvotes: 0,
+            comments: []
+        };
+
+        toiletPoints.push(newToilet);
+        renderPoints();
+        updateGlobalStats();
+        showPointDetails(newToilet);
+        showNotificationToast("🎉 公共廁所回報成功！騎士們感謝您！");
+    }
 }
 
 // Toggle Heatmap Overlay Simulation
@@ -600,12 +704,22 @@ function toggleHeatmap() {
 
     if (isHeatmapActive) {
         btn.classList.add("heatmap-active");
-        btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉熱點圖模式`;
-        drawHeatmap();
-        showNotificationToast("🔥 已開啟危險熱點分析模式");
+        if (currentMode === 'danger') {
+            btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉危險熱點圖`;
+            drawHeatmap();
+            showNotificationToast("🔥 已開啟危險熱點分析模式");
+        } else {
+            btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉公廁分佈圖`;
+            drawHeatmap();
+            showNotificationToast("🚻 已開啟公廁分佈分析模式");
+        }
     } else {
         btn.classList.remove("heatmap-active");
-        btn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        if (currentMode === 'danger') {
+            btn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        } else {
+            btn.innerHTML = `<i class="fas fa-fire"></i> 開啟公廁分佈圖`;
+        }
         heatmapLayerGroup.clearLayers();
         showNotificationToast("已切換回標準地圖視圖");
     }
@@ -615,20 +729,37 @@ function toggleHeatmap() {
 function drawHeatmap() {
     heatmapLayerGroup.clearLayers();
 
-    points.forEach(point => {
-        // Danger score determines color/opacity/radius
-        let color = '#ef4444'; // Red
-        let radius = 60;
-        let opacity = 0.25;
+    const activePoints = currentMode === 'danger' ? points : toiletPoints;
 
-        if (point.dangerLevel === 4) {
-            color = '#f97316'; // Orange
-            radius = 50;
+    activePoints.forEach(point => {
+        let color, radius, opacity;
+        
+        if (currentMode === 'danger') {
+            color = '#ef4444'; // Red
+            radius = 60;
+            opacity = 0.25;
+
+            if (point.dangerLevel === 4) {
+                color = '#f97316'; // Orange
+                radius = 50;
+                opacity = 0.22;
+            } else if (point.dangerLevel === 3) {
+                color = '#f59e0b'; // Yellow
+                radius = 40;
+                opacity = 0.18;
+            }
+        } else {
+            color = '#06b6d4'; // Cyan
+            radius = 55;
             opacity = 0.22;
-        } else if (point.dangerLevel === 3) {
-            color = '#f59e0b'; // Yellow
-            radius = 40;
-            opacity = 0.18;
+
+            if (point.cleanliness === 4) {
+                radius = 45;
+                opacity = 0.18;
+            } else if (point.cleanliness === 3) {
+                radius = 35;
+                opacity = 0.15;
+            }
         }
 
         const circle = L.circle([point.lat, point.lng], {
@@ -744,6 +875,88 @@ function initUIEvents() {
         const query = e.target.value.toLowerCase().trim();
         filterMarkersAndList(query);
     });
+
+    // Mode Switcher clicking
+    const modeDangerBtn = document.getElementById("mode-danger-btn");
+    const modeToiletBtn = document.getElementById("mode-toilet-btn");
+
+    modeDangerBtn.addEventListener("click", () => {
+        if (currentMode === 'danger') return;
+        switchMode('danger');
+    });
+
+    modeToiletBtn.addEventListener("click", () => {
+        if (currentMode === 'toilet') return;
+        switchMode('toilet');
+    });
+}
+
+// Switch active map mode (Danger points vs Toilets)
+function switchMode(mode) {
+    currentMode = mode;
+    
+    const modeDangerBtn = document.getElementById("mode-danger-btn");
+    const modeToiletBtn = document.getElementById("mode-toilet-btn");
+    const legendDanger = document.getElementById("legend-danger");
+    const legendToilet = document.getElementById("legend-toilet");
+    const addBtn = document.getElementById("add-danger-btn");
+    const drawerTitle = document.getElementById("drawer-list-title");
+    const drawerToggleText = document.getElementById("drawer-toggle-text");
+    const searchInput = document.getElementById("search-input");
+    const heatmapBtn = document.getElementById("heatmap-btn");
+
+    // Close right sidebar
+    document.getElementById("sidebar-right").classList.remove("active");
+
+    if (mode === 'danger') {
+        modeDangerBtn.classList.add("active");
+        modeToiletBtn.classList.remove("active");
+        
+        legendDanger.style.display = "block";
+        legendToilet.style.display = "none";
+        
+        addBtn.innerHTML = `<i class="fas fa-plus-circle"></i> + 回報危險路段`;
+        addBtn.style.borderLeftColor = "var(--accent-red)";
+        
+        drawerTitle.innerText = "逢甲學區危險路段清單";
+        drawerToggleText.innerText = "瀏覽危險清單";
+        searchInput.placeholder = "搜尋路段、交叉路口或分類...";
+        
+        // Reset heatmap button text
+        if (isHeatmapActive) {
+            heatmapBtn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉危險熱點圖`;
+        } else {
+            heatmapBtn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        }
+    } else {
+        modeDangerBtn.classList.remove("active");
+        modeToiletBtn.classList.add("active");
+        
+        legendDanger.style.display = "none";
+        legendToilet.style.display = "block";
+        
+        addBtn.innerHTML = `<i class="fas fa-plus-circle"></i> + 回報公共廁所`;
+        addBtn.style.borderLeftColor = "var(--accent-cyan)";
+        
+        drawerTitle.innerText = "逢甲學區公廁清單";
+        drawerToggleText.innerText = "瀏覽公廁清單";
+        searchInput.placeholder = "搜尋公廁、地點、超商、公園...";
+        
+        // Reset heatmap button text
+        if (isHeatmapActive) {
+            heatmapBtn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉公廁分佈圖`;
+        } else {
+            heatmapBtn.innerHTML = `<i class="fas fa-fire"></i> 開啟公廁分佈圖`;
+        }
+    }
+
+    // Reset search
+    searchInput.value = "";
+
+    // Re-render
+    renderPoints();
+    updateGlobalStats();
+    showNotificationToast(mode === 'danger' ? "已切換至危險路段模式" : "已切換至公廁尋找模式");
 }
 
 // Open and load customized account settings card inside sidebar
@@ -760,6 +973,11 @@ function openUserSettingsPanel() {
     detailsView.style.display = "none";
     formView.style.display = "none";
     userSettingsView.style.display = "block";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
+
+    // Render favorites list
+    renderSettingsFavoritesList();
 
     sidebar.classList.add("active");
 }
@@ -783,6 +1001,11 @@ function filterMarkersAndList(query) {
                         point.description.toLowerCase().includes(query) ||
                         point.hazardTypeName.toLowerCase().includes(query));
         
+        // If in favorite tab, only show match if it is also in favorites!
+        if (currentDrawerTab === 'fav' && !favorites.includes(point.id)) {
+            matches = false;
+        }
+
         const marker = markers[point.id];
         if (marker) {
             if (matches) {
@@ -830,6 +1053,7 @@ function filterMarkersAndList(query) {
                         (!isLeft && point.hazardTypeName.toLowerCase().includes(query));
         
         if (!matches) return;
+        renderedCount++;
 
         const item = document.createElement("div");
         item.className = "drawer-item";
@@ -861,6 +1085,12 @@ function filterMarkersAndList(query) {
 
         listContainer.appendChild(item);
     });
+
+    if (renderedCount === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0; width: 100%;">
+            🔍 無符合條件的危險路段。
+        </div>`;
+    }
 }
 
 // Trigger floating cyber toasts notifications
@@ -885,4 +1115,277 @@ function getCurrentDateTimeString() {
     const min = String(now.getMinutes()).padStart(2, '0');
     
     return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+// Toggle Favorite State
+function toggleFavorite(pointId) {
+    const index = favorites.indexOf(pointId);
+    let isAdded = false;
+    
+    if (index === -1) {
+        favorites.push(pointId);
+        isAdded = true;
+        showNotificationToast("💖 已加入收藏地點！");
+    } else {
+        favorites.splice(index, 1);
+        isAdded = false;
+        showNotificationToast("💔 已取消收藏");
+    }
+    
+    // Persist to localStorage
+    try {
+        localStorage.setItem("fcu_moto_favorites", JSON.stringify(favorites));
+    } catch (e) {
+        console.error("Failed to save favorites to localStorage", e);
+    }
+    
+    // Update Detail View Button if active
+    if (selectedPoint && selectedPoint.id === pointId) {
+        const favBtn = document.getElementById("favorite-toggle-btn");
+        if (favBtn) {
+            if (isAdded) {
+                favBtn.classList.add("active");
+                favBtn.innerHTML = `<i class="fas fa-heart"></i>`;
+            } else {
+                favBtn.classList.remove("active");
+                favBtn.innerHTML = `<i class="far fa-heart"></i>`;
+            }
+        }
+    }
+    
+    // Refresh Map markers to update icon color
+    renderDangerPoints();
+    
+    // Refresh lists
+    const query = document.getElementById("search-input").value.toLowerCase().trim();
+    if (query) {
+        filterMarkersAndList(query);
+    } else {
+        renderListView();
+    }
+    
+    // Refresh Settings Favorites View
+    renderSettingsFavoritesList();
+}
+
+// Render favorites inside the User Profile / Settings sidebar
+function settingsFavNavigate(lat, lng, point) {
+    map.panTo([lat, lng - 0.0015]);
+    showPointDetails(point);
+}
+
+function renderSettingsFavoritesList() {
+    const container = document.getElementById("settings-favorites-list");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    
+    const favPoints = points.filter(point => favorites.includes(point.id));
+    
+    favPoints.forEach(point => {
+        const card = document.createElement("div");
+        card.className = "fav-location-card";
+        
+        card.innerHTML = `
+            <div>
+                <div class="fav-location-card-title">${point.title}</div>
+                <div class="fav-location-card-meta">
+                    <span class="badge danger-${point.dangerLevel}">★ ${point.dangerLevel}</span>
+                    <span>${point.hazardTypeName}</span>
+                </div>
+            </div>
+            <div class="fav-location-card-action" title="取消收藏">
+                <i class="fas fa-heart-broken"></i>
+            </div>
+        `;
+        
+        // Clicking card pans map and shows details
+        card.addEventListener("click", (e) => {
+            // If clicking the heart-broken button, stop propagation and toggle
+            if (e.target.closest(".fav-location-card-action")) {
+                e.stopPropagation();
+                toggleFavorite(point.id);
+                return;
+            }
+            
+            settingsFavNavigate(point.lat, point.lng, point);
+        });
+        
+        container.appendChild(card);
+    });
+}
+
+// Create customized facility div icon
+function createFacilityIcon(type) {
+    if (type === 'gas') {
+        return L.divIcon({
+            className: 'facility-marker gas-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-gas-pump"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    } else if (type === 'parking') {
+        return L.divIcon({
+            className: 'facility-marker parking-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-parking"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    }
+}
+
+// Render Gas Stations to Map
+function renderGasStations() {
+    gasLayerGroup.clearLayers();
+    if (!showGasStations) return;
+
+    mockGasStations.forEach(station => {
+        const marker = L.marker([station.lat, station.lng], {
+            icon: createFacilityIcon('gas')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-green); margin-right: 5px;"><i class="fas fa-gas-pump"></i></span> ${station.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(station);
+        });
+
+        marker.addTo(gasLayerGroup);
+    });
+}
+
+// Render Parking Lots to Map
+function renderParkingLots() {
+    parkingLayerGroup.clearLayers();
+    if (!showParkingLots) return;
+
+    mockParkingLots.forEach(lot => {
+        const marker = L.marker([lot.lat, lot.lng], {
+            icon: createFacilityIcon('parking')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-parking"></i></span> ${lot.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(lot);
+        });
+
+        marker.addTo(parkingLayerGroup);
+    });
+}
+
+// Display Facility Details in Right Sidebar (VIEW 4)
+function showFacilityDetails(facility) {
+    selectedPoint = null; // Clear selected danger point
+    isAddingMode = false;
+    const onboardingToast = document.getElementById("onboarding-toast");
+    if (onboardingToast) onboardingToast.classList.remove("show");
+
+    const sidebar = document.getElementById("sidebar-right");
+    const detailsView = document.getElementById("sidebar-details-view");
+    const formView = document.getElementById("sidebar-form-view");
+    const userSettingsView = document.getElementById("sidebar-settings-view");
+    const facilityView = document.getElementById("sidebar-facility-view");
+
+    if (detailsView) detailsView.style.display = "none";
+    if (formView) formView.style.display = "none";
+    if (userSettingsView) userSettingsView.style.display = "none";
+    if (facilityView) facilityView.style.display = "block";
+
+    // Set fields
+    document.getElementById("facility-title").innerText = facility.title;
+    document.getElementById("facility-description").innerText = facility.description;
+
+    const typeNameEl = document.getElementById("facility-type-name");
+    const badgeEl = document.getElementById("facility-badge");
+    const extraEl = document.getElementById("facility-extra");
+    const servicesContainer = document.getElementById("facility-services");
+
+    if (servicesContainer) {
+        servicesContainer.innerHTML = "";
+    }
+
+    if (facility.type === 'gas') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "加油站";
+            typeNameEl.style.color = "var(--accent-green)";
+            typeNameEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
+            typeNameEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+        
+        if (badgeEl) {
+            badgeEl.innerText = facility.hours;
+            badgeEl.style.color = "var(--accent-green)";
+            badgeEl.style.borderColor = "rgba(16, 185, 129, 0.4)";
+            badgeEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `品牌: ${facility.brand === 'CPC' ? '台灣中油' : '台塑石油'}`;
+
+        // Render services
+        if (servicesContainer) {
+            facility.services.forEach(service => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag";
+                chip.innerHTML = `<i class="fas fa-check-circle"></i> ${service}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    } else if (facility.type === 'parking') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "機車停車場";
+            typeNameEl.style.color = "var(--accent-cyan)";
+            typeNameEl.style.borderColor = "rgba(6, 182, 212, 0.3)";
+            typeNameEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (badgeEl) {
+            badgeEl.innerText = facility.fee;
+            badgeEl.style.color = "var(--accent-cyan)";
+            badgeEl.style.borderColor = "rgba(6, 182, 212, 0.4)";
+            badgeEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `車位數: ${facility.spaces}`;
+
+        // Render features
+        if (servicesContainer) {
+            facility.features.forEach(feature => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag parking-tag";
+                chip.innerHTML = `<i class="fas fa-motorcycle"></i> ${feature}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    }
+
+    // Open sidebar
+    if (sidebar) sidebar.classList.add("active");
+
+    // Center map slightly shifted to the left
+    map.panTo([facility.lat, facility.lng - 0.0015]);
 }

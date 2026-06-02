@@ -59,6 +59,16 @@
 
         <!-- Floating Controls overlay on map -->
         <div class="map-float-controls">
+            <!-- Mode Switcher Segmented Control -->
+            <div class="mode-switcher">
+                <button class="mode-btn active danger-mode" id="mode-danger-btn">
+                    <i class="fas fa-exclamation-triangle"></i> 危險路段
+                </button>
+                <button class="mode-btn toilet-mode" id="mode-toilet-btn">
+                    <i class="fas fa-restroom"></i> 尋找公廁
+                </button>
+            </div>
+
             <!-- Search & Filters -->
             <div class="glass-panel">
                 <div class="search-box">
@@ -91,6 +101,24 @@
                         <span class="filter-label"><span class="badge leftturn-badge">待轉</span> 兩段式左轉提示點</span>
                     </div>
                 </div>
+                <div class="filter-group" id="legend-toilet" style="display: none;">
+                    <div class="filter-title">地圖圖例說明</div>
+                    <div class="filter-options">
+                        <span class="filter-label"><span class="badge toilet-tag">🚻 公廁</span> 青色呼吸燈標記</span>
+                        <span class="filter-label" style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> 點擊地圖上的任意位置可回報公廁</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 0.75rem;">
+                    <div class="filter-title">騎士友善設施</div>
+                    <div class="facility-toggles" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="facility-toggle-btn" id="toggle-gas-stations" type="button">
+                            <i class="fas fa-gas-pump"></i> 加油站
+                        </button>
+                        <button class="facility-toggle-btn" id="toggle-parking-lots" type="button">
+                            <i class="fas fa-parking"></i> 停車場
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Heatmap Mode Trigger -->
@@ -107,7 +135,11 @@
         <!-- Bottom Drawer: Dangerous List View (Nearby) -->
         <div class="list-drawer glass-panel" id="list-drawer">
             <div class="list-drawer-header">
-                <h3><i class="fas fa-list-ul" style="color: var(--accent-blue); margin-right: 5px;"></i> 逢甲學區危險路段清單</h3>
+                <h3><i class="fas fa-list-ul" style="color: var(--accent-blue); margin-right: 5px;"></i> <span id="drawer-list-title">逢甲學區危險路段清單</span></h3>
+                <div class="drawer-tabs" id="drawer-tabs-container">
+                    <button id="tab-all-spots" class="drawer-tab active">全部</button>
+                    <button id="tab-fav-spots" class="drawer-tab"><i class="fas fa-heart" style="font-size: 0.75rem; margin-right: 3px;"></i>我的收藏</button>
+                </div>
                 <button class="close-btn" id="drawer-close"><i class="fas fa-chevron-down"></i></button>
             </div>
             <div class="drawer-items-list" id="drawer-items-list">
@@ -117,7 +149,7 @@
 
         <!-- Float Drawer toggle button (when drawer is collapsed) -->
         <button class="drawer-toggle-btn" id="drawer-toggle">
-            <i class="fas fa-list-ul"></i> 瀏覽危險清單
+            <i class="fas fa-list-ul"></i> <span id="drawer-toggle-text">瀏覽危險清單</span>
         </button>
 
         <!-- Right Side Panel: Details View & Submission Form -->
@@ -137,7 +169,34 @@
                         </div>
                     </div>
 
-                    <h2 id="detail-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">逢甲路與福星路口</h2>
+                    <div class="detail-title-container" style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; gap: 10px;">
+                        <h2 id="detail-title" style="margin: 0; font-size: 1.3rem; font-weight: 700; color: white; line-height: 1.3;">逢甲路與福星路口</h2>
+                        <button class="favorite-btn" id="favorite-toggle-btn" title="收藏此地點">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Toilet Specific Attributes Panel -->
+                    <div class="form-group" id="toilet-details-card" style="display: none; margin-bottom: 0.5rem;">
+                        <div class="toilet-indicators">
+                            <div class="toilet-indicator-card" id="detail-toilet-paper">
+                                <i class="fas fa-toilet-paper"></i>
+                                <span>提供紙巾</span>
+                            </div>
+                            <div class="toilet-indicator-card" id="detail-toilet-accessible">
+                                <i class="fas fa-wheelchair"></i>
+                                <span>無障礙</span>
+                            </div>
+                            <div class="toilet-indicator-card" id="detail-toilet-parking">
+                                <i class="fas fa-motorcycle"></i>
+                                <span>方便停車</span>
+                            </div>
+                        </div>
+                        <div class="description-box" style="font-size: 0.85rem; padding: 0.6rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-top: 0.5rem; background: rgba(255, 255, 255, 0.02);">
+                            <span style="color: var(--text-secondary);"><i class="far fa-clock"></i> 開放時間</span>
+                            <span id="detail-toilet-hours" style="color: white; font-weight: 600;">24 小時開放</span>
+                        </div>
+                    </div>
                     
                     <!-- Left Turn Intersection Evaluation Panel (Visible only for Left Turn points) -->
                     <div id="detail-left-turn-specs" style="display: none; margin-bottom: 0.5rem;">
@@ -161,7 +220,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <div class="section-label">騎士回報詳情</div>
+                        <div class="section-label" id="detail-desc-label">騎士回報詳情</div>
                         <div class="description-box" id="detail-description">
                             此處路口尖峰時間車流大，待轉區經常擠滿機車...
                         </div>
@@ -212,12 +271,12 @@
 
                     <form class="report-form" id="hazard-report-form">
                         <div class="form-group">
-                            <label for="form-title">危險地段/路口名稱</label>
+                            <label for="form-title" id="form-title-label">危險地段/路口名稱</label>
                             <input type="text" id="form-title" placeholder="例如：河南路二段與西安街口" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="form-hazard-type">危險情況分類</label>
+                            <label for="form-hazard-type" id="form-hazard-type-label">危險情況分類</label>
                             <select id="form-hazard-type" required>
                                 <option value="illegal_parking">臨停違停嚴重 / 視線死角</option>
                                 <option value="crowded">人車交織 / 道路擁擠</option>
@@ -229,8 +288,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label>評定危險星級 (1為低，5為極度危險)</label>
-                            <div class="rating-stars-input">
+                            <label id="form-rating-label">評定危險星級 (1為低，5為極度危險)</label>
+                            <div class="rating-stars-input" id="form-rating-stars">
                                 <i class="fas fa-star active" data-value="1"></i>
                                 <i class="fas fa-star active" data-value="2"></i>
                                 <i class="fas fa-star active" data-value="3"></i>
@@ -239,12 +298,35 @@
                             </div>
                         </div>
 
+                        <!-- Toilet Specific Attributes (Hidden by default) -->
+                        <div class="form-group" id="form-toilet-attributes" style="display: none;">
+                            <label>公廁屬性與騎士友善指標</label>
+                            <div class="form-checkbox-group">
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-has-paper" checked>
+                                    <span>🧻 提供衛生紙 (廁紙)</span>
+                                </label>
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-is-accessible">
+                                    <span>♿ 提供無障礙空間/無障礙廁所</span>
+                                </label>
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-motorcycle-friendly" checked>
+                                    <span>🛵 騎士友善 (方便機車停靠)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="form-toilet-hours-group" style="display: none;">
+                            <label for="form-toilet-hours">開放時間</label>
+                            <input type="text" id="form-toilet-hours" placeholder="例如：24 小時開放 或 08:00-22:00">
+                        </div>
+
                         <div class="form-group">
-                            <label for="form-description">具體危險路況描述</label>
+                            <label for="form-description" id="form-desc-label">具體危險路況描述</label>
                             <textarea id="form-description" placeholder="請詳細說明該路段何時最危險，有什麼潛在盲點？給其他騎士的避雷建議？" required></textarea>
                         </div>
 
-                        <button type="submit" class="form-submit-btn">
+                        <button type="submit" class="form-submit-btn" id="form-submit-btn">
                             <i class="fas fa-check-circle"></i> 提交危險標記回報
                         </button>
                     </form>
@@ -290,6 +372,13 @@
                         </div>
 
                         <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">我的收藏地點</div>
+                            <div class="favorites-list-container" id="settings-favorites-list">
+                                <!-- Favorited items will be rendered here dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
                             <div class="section-label">個人帳戶統計</div>
                             <div class="description-box" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between;">
@@ -310,6 +399,38 @@
                         <button class="vote-btn" style="margin-top: 1rem; border-color: var(--accent-red); color: var(--accent-red);" onclick="showModal('login-modal')">
                             <i class="fas fa-sign-out-alt"></i> 模擬切換使用者帳戶
                         </button>
+                    </div>
+                </div>
+
+                <!-- VIEW 4: Facility Details -->
+                <div class="info-body" id="sidebar-facility-view" style="display: none;">
+                    <div class="hazard-meta">
+                        <span class="facility-type-tag" id="facility-type-name">加油站</span>
+                        <div id="facility-badge" class="badge danger-5" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">24H 營業</div>
+                    </div>
+
+                    <h2 id="facility-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">中油加油站</h2>
+                    
+                    <div class="form-group">
+                        <div class="section-label">設施服務詳情</div>
+                        <div class="description-box" id="facility-description">
+                            此加油站設有機車專用加油車道...
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="section-label">提供特色與服務</div>
+                        <div class="service-tags-container" id="facility-services" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.2rem;">
+                            <!-- JS will render service tags dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="reporter-card" style="border-top: 1px dashed var(--glass-border); padding-top: 0.75rem; margin-top: auto;">
+                        <div class="reporter-info">
+                            <div class="reporter-avatar"><i class="fas fa-shield-alt"></i></div>
+                            <div>資訊類別: <span style="color: var(--accent-green); font-weight: 600;">官方認證設施</span></div>
+                        </div>
+                        <div id="facility-extra" style="color: var(--text-secondary);"> CPC </div>
                     </div>
                 </div>
 
