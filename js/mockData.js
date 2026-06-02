@@ -107,172 +107,104 @@ const hazardTypes = {
     other: "其他道路潛在危險"
 };
 
-const mockGasStations = [
-    {
-        id: "gas_1",
-        title: "台灣中油 逢甲站 (河南路)",
-        lat: 24.1738,
-        lng: 120.6504,
-        type: "gas",
-        brand: "CPC",
-        hours: "24 小時營業",
-        services: ["自助加油", "輪胎充氣機", "公廁"],
-        description: "位於河南路二段，是逢甲商圈周邊最大的中油加油站，夜間尖峰時間常有排隊人潮。設有專屬機車加油動線與自助加油島。"
-    },
-    {
-        id: "gas_2",
-        title: "台灣中油 直營西屯路站",
-        lat: 24.1685,
-        lng: 120.6416,
-        type: "gas",
-        brand: "CPC",
-        hours: "06:00 - 23:00",
-        services: ["人工加油", "輪胎充氣機", "洗車"],
-        description: "中油直營站，油質有保障。機車加油車道寬敞，適合西屯路通勤往市區的騎士順路加油。"
-    },
-    {
-        id: "gas_3",
-        title: "台塑石油 全國逢甲站 (福星北路)",
-        lat: 24.1832,
-        lng: 120.6441,
-        type: "gas",
-        brand: "FPCC",
-        hours: "24 小時營業",
-        services: ["自助加油", "洗車", "超商"],
-        description: "位於福星北路與漢翔路口附近，加油島空間寬敞，提供自助加油優惠，自助加油設備非常新穎好用。"
-    }
-];
-
-const mockParkingLots = [
-    {
-        id: "parking_1",
-        title: "逢甲大學福星校區機車停車場",
-        lat: 24.1818,
-        lng: 120.6471,
-        type: "parking",
-        fee: "憑學生證感應免費",
-        spaces: "約 1200 格",
-        features: ["遮雨棚", "電子閘門", "全天候監控"],
-        description: "專供逢甲學生與教職員使用的機車停車場，內部規劃完善，有大面積遮雨棚防曬防雨，是學生停放愛車的首選。"
-    },
-    {
-        id: "parking_2",
-        title: "福星公有停車場 (星巴克旁機車區)",
-        lat: 24.1789,
-        lng: 120.6445,
-        type: "parking",
-        fee: "計次 20 元 / 天",
-        spaces: "約 250 格",
-        features: ["室外格位", "路邊收費"],
-        description: "鄰近逢甲麥當勞與星巴克，出入商圈極為便利，公有收費管理安全性佳，是逛街與用餐騎士的熱門停放點。"
-    },
-    {
-        id: "parking_3",
-        title: "逢甲文華公有立體停車場 (機車區)",
-        lat: 24.1768,
-        lng: 120.6495,
-        type: "parking",
-        fee: "計次 20 元 / 天",
-        spaces: "約 300 格",
-        features: ["室內防雨", "車牌辨識", "電子支付"],
-        description: "文華立體停車場附設的室內機車區，位於文華路旁。下雨天停放可免於淋雨，且有管理員巡邏，安全性極高。"
-    }
-];
-
-const mockToiletPoints = [
+const mockLeftTurnPoints = [
     {
         id: 101,
-        title: "中油福星加油站公廁",
-        lat: 24.17985,
-        lng: 120.64380,
-        toiletType: "gas_station",
-        toiletTypeName: "中油加油站公廁",
-        cleanliness: 4,
-        hasPaper: true,
-        isAccessible: true,
-        motorcycleFriendly: true,
-        hours: "24 小時開放",
-        reporter: "加油小幫手",
-        reportTime: "2026-05-20 10:30",
-        description: "加油站附設的公廁，非常方便機車停靠（加油站旁有機車停放區）。廁所每天定時清潔，乾淨度佳，提供衛生紙，且設有無障礙空間。是機車騎士半夜急需的首選！",
-        upvotes: 35,
-        downvotes: 1,
+        title: "逢甲路與福星路口 (麥當勞旁)",
+        lat: 24.17865,
+        lng: 120.64655,
+        isLeftTurn: true,
+        dangerLevel: 4, // 用作危險度或安全度參考，為求一致，我們在危險評價系統用星級 (4)
+        waitingAreaSize: "狹小 (尖峰易溢出至車道)",
+        crowdLevel: "極高 (下課及夜市時段擁擠)",
+        safetyRating: 2, // 待轉區安全評分 2/5 (偏低)
+        reporter: "資工二乙",
+        reportTime: "2026-05-28 12:10",
+        description: "逢甲路往福星路方向需要兩段式左轉。待轉區格子畫得非常窄小，只要下課尖峰有5台以上機車，待轉區就會直接滿出來到福星路的直行車流中，騎士安全堪憂！建議尖峰時間放慢車速，盡量靠右停靠。",
+        upvotes: 38,
+        downvotes: 2,
         comments: [
-            { author: "夜貓騎士", date: "2026-05-20 23:45", content: "半夜跑山回來肚子痛，還好有這間24小時的，救了我一命！" },
-            { author: "機車外送員", date: "2026-05-22 14:20", content: "這裡機車可以直接停加油站旁，進去上廁所不用一分鐘，超推！" }
+            { author: "逢甲小鋼炮", date: "2026-05-28 13:00", content: "真的！每次晚上待轉都覺得自己後半截車屁股在馬路上被車子刷卡。" },
+            { author: "安全防禦駕駛", date: "2026-05-29 09:15", content: "建議如果車太多，可以考慮直行到下一個路口再繞回來，避開這個待轉格。" }
         ]
     },
     {
         id: 102,
-        title: "逢甲大學積學館公廁",
-        lat: 24.17890,
-        lng: 120.64890,
-        toiletType: "campus",
-        toiletTypeName: "學校教學大樓公廁",
-        cleanliness: 5,
-        hasPaper: true,
-        isAccessible: true,
-        motorcycleFriendly: false,
-        hours: "每日 07:00 - 22:00",
-        reporter: "逢大糾察隊",
-        reportTime: "2026-05-22 15:45",
-        description: "位於逢甲大學積學館一樓，非常乾淨，有冷氣且空氣流通。學校上課時間都有清潔人員巡邏。不過校外人士需要步行進入校園，機車需停在校外停車格後走進去，稍微不便。",
-        upvotes: 24,
-        downvotes: 2,
+        title: "河南路二段與福星路口 (重要幹道樞紐)",
+        lat: 24.17510,
+        lng: 120.65350,
+        isLeftTurn: true,
+        dangerLevel: 5,
+        waitingAreaSize: "中等 (但車流龐大，仍嫌不足)",
+        crowdLevel: "極高 (通勤尖峰車滿為患)",
+        safetyRating: 1, // 安全評分 1/5 (極度危險)
+        reporter: "交通守護星",
+        reportTime: "2026-05-27 08:30",
+        description: "由福星路左轉河南路二段必須兩段式左轉。因河南路是雙向多線道且車速極快，在待轉區等待時會直接迎面承受大流量的右轉與直行車流。綠燈起步時，左轉車輛常與直行車流交織，是極易發生擦撞的交界路口。",
+        upvotes: 72,
+        downvotes: 1,
         comments: [
-            { author: "資工小學弟", date: "2026-05-22 16:00", content: "積學館的廁所超乾淨，而且洗手台很大，甚至還有香氛！" },
-            { author: "校外遊客", date: "2026-05-24 11:30", content: "進校園上廁所很舒服，但車子要停在福星路再走進來。" }
+            { author: "通勤小跑車", date: "2026-05-27 08:45", content: "早上8點這裡的待轉區根本是修羅場，超多人不禮讓的。" },
+            { author: "逢大阿甘", date: "2026-05-28 17:50", content: "起步時千萬別衝第一，一定要看清楚對向有沒有搶快的直行車！" }
         ]
     },
     {
         id: 103,
-        title: "逢甲公園公共廁所",
-        lat: 24.17380,
-        lng: 120.65180,
-        toiletType: "park",
-        toiletTypeName: "市政公園公廁",
-        cleanliness: 3,
-        hasPaper: false,
-        isAccessible: true,
-        motorcycleFriendly: true,
-        hours: "24 小時開放",
-        reporter: "公園散步阿伯",
-        reportTime: "2026-05-18 08:15",
-        description: "逢甲公園內的公共廁所，靠近路邊，周邊有許多路邊機車停車格，十分便利。廁所是24小時的，但晚上較暗。有時候衛生紙會用完，建議自備。乾淨度普通，但有定期打掃。",
-        upvotes: 19,
+        title: "西屯路二段與逢甲路口 (狹窄路口待轉)",
+        lat: 24.17420,
+        lng: 120.64530,
+        isLeftTurn: true,
+        dangerLevel: 5,
+        waitingAreaSize: "極度狹小 (約僅容納3台機車)",
+        crowdLevel: "高 (學生與買便當人潮多)",
+        safetyRating: 2,
+        reporter: "機車難民",
+        reportTime: "2026-05-26 18:00",
+        description: "逢甲路左轉西屯路二段必須兩段式左轉。待轉區空間被壓縮在狹窄的路肩，且路口有公車站牌與違停。一旦有大型公車經過，公車車身會非常貼近待轉格，極具壓迫感。強烈建議新手骑士要特別注意車身間距。",
+        upvotes: 49,
         downvotes: 3,
         comments: [
-            { author: "休閒騎士", date: "2026-05-18 19:30", content: "路過這裡想上廁所很方便，旁邊都是機車位。但有時蚊子有點多。" },
-            { author: "備用衛生紙", date: "2026-05-21 21:00", content: "上次去沒有衛生紙，大家記得自己帶喔！" }
+            { author: "公車刷卡機", date: "2026-05-26 18:22", content: "每次公車切進來，我都以為我的照後鏡要被撞掉了，超可怕。" },
+            { author: "FCU_Rider", date: "2026-05-27 12:10", content: "這待轉格設計根本是陷阱，路那麼小還要兩段轉。" }
         ]
     },
     {
         id: 104,
-        title: "7-11 逢大門市公共廁所",
-        lat: 24.17740,
-        lng: 120.65060,
-        toiletType: "convenience_store",
-        toiletTypeName: "超商附設公廁",
-        cleanliness: 4,
-        hasPaper: true,
-        isAccessible: false,
-        motorcycleFriendly: true,
-        hours: "24 小時開放",
-        reporter: "超商常客",
-        reportTime: "2026-05-24 12:00",
-        description: "逢大門市內的廁所，非常方便。門口有機車臨停空間。店員打掃得很勤快，有提供衛生紙。如果不好意思直接使用，可以順便買瓶飲料。無障礙空間受限於店內空間較窄。",
-        upvotes: 28,
+        title: "河南路二段與西屯路二段路口 (大型多岔路口)",
+        lat: 24.17240,
+        lng: 120.64890,
+        isLeftTurn: true,
+        dangerLevel: 3,
+        waitingAreaSize: "寬敞 (標線相對清晰)",
+        crowdLevel: "中等 (路幅較大)",
+        safetyRating: 4, // 安全評分 4/5 (相對安全)
+        reporter: "機車大叔",
+        reportTime: "2026-05-25 15:40",
+        description: "此路口為大型四岔路口，往西屯路或河南路皆有清楚的兩段式左轉標誌。待轉格空間非常充沛且退縮在安全島旁，能有效避開直行車流。唯獨需注意黃燈亮起時，搶黃燈的直行車速極快，起步時應確認完全紅燈後再前行。",
+        upvotes: 21,
         downvotes: 0,
         comments: [
-            { author: "美食獵人", date: "2026-05-24 13:15", content: "這家超商廁所非常乾淨，上完順便買杯咖啡很方便！" }
+            { author: "安全騎士", date: "2026-05-25 16:00", content: "這裡的待轉區算是逢甲附近設計得最好的了，停起來很有安全感。" }
+        ]
+    },
+    {
+        id: 105,
+        title: "福星北路與黎明路三段路口 (大學城外圍幹道)",
+        lat: 24.18340,
+        lng: 120.64810,
+        isLeftTurn: true,
+        dangerLevel: 4,
+        waitingAreaSize: "中等 (無安全島遮蔽)",
+        crowdLevel: "高 (往僑光、中科車流大)",
+        safetyRating: 3,
+        reporter: "僑光機車俠",
+        reportTime: "2026-05-24 10:15",
+        description: "黎明路三段左轉福星北路（往逢甲大學後門/僑光科大方向）。待轉區位於馬路正中間延伸處，後方完全沒有任何防撞石柱或安全島遮蔽，機車騎士暴露於黎明路疾駛而來的直行車流前。夜市結束後或深夜車速快，需特別警惕後方來車。",
+        upvotes: 35,
+        downvotes: 1,
+        comments: [
+            { author: "中科通勤族", date: "2026-05-24 11:00", content: "半夜騎這條路大家車速都破60，待轉時要一直盯著後視鏡，很怕被追撞。" },
+            { author: "新手保衛者", date: "2026-05-25 14:20", content: "建議把車燈維持開啟，增加夜間顯眼度。" }
         ]
     }
 ];
-
-const toiletTypes = {
-    gas_station: "中油加油站公廁",
-    campus: "學校教學大樓公廁",
-    convenience_store: "超商附設公廁",
-    park: "市政公園公廁",
-    other: "其他公共廁所"
-};
