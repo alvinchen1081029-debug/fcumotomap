@@ -178,3 +178,101 @@ const mockParkingLots = [
         description: "文華立體停車場附設的室內機車區，位於文華路旁。下雨天停放可免於淋雨，且有管理員巡邏，安全性極高。"
     }
 ];
+
+const mockToiletPoints = [
+    {
+        id: 101,
+        title: "中油福星加油站公廁",
+        lat: 24.17985,
+        lng: 120.64380,
+        toiletType: "gas_station",
+        toiletTypeName: "中油加油站公廁",
+        cleanliness: 4,
+        hasPaper: true,
+        isAccessible: true,
+        motorcycleFriendly: true,
+        hours: "24 小時開放",
+        reporter: "加油小幫手",
+        reportTime: "2026-05-20 10:30",
+        description: "加油站附設的公廁，非常方便機車停靠（加油站旁有機車停放區）。廁所每天定時清潔，乾淨度佳，提供衛生紙，且設有無障礙空間。是機車騎士半夜急需的首選！",
+        upvotes: 35,
+        downvotes: 1,
+        comments: [
+            { author: "夜貓騎士", date: "2026-05-20 23:45", content: "半夜跑山回來肚子痛，還好有這間24小時的，救了我一命！" },
+            { author: "機車外送員", date: "2026-05-22 14:20", content: "這裡機車可以直接停加油站旁，進去上廁所不用一分鐘，超推！" }
+        ]
+    },
+    {
+        id: 102,
+        title: "逢甲大學積學館公廁",
+        lat: 24.17890,
+        lng: 120.64890,
+        toiletType: "campus",
+        toiletTypeName: "學校教學大樓公廁",
+        cleanliness: 5,
+        hasPaper: true,
+        isAccessible: true,
+        motorcycleFriendly: false,
+        hours: "每日 07:00 - 22:00",
+        reporter: "逢大糾察隊",
+        reportTime: "2026-05-22 15:45",
+        description: "位於逢甲大學積學館一樓，非常乾淨，有冷氣且空氣流通。學校上課時間都有清潔人員巡邏。不過校外人士需要步行進入校園，機車需停在校外停車格後走進去，稍微不便。",
+        upvotes: 24,
+        downvotes: 2,
+        comments: [
+            { author: "資工小學弟", date: "2026-05-22 16:00", content: "積學館的廁所超乾淨，而且洗手台很大，甚至還有香氛！" },
+            { author: "校外遊客", date: "2026-05-24 11:30", content: "進校園上廁所很舒服，但車子要停在福星路再走進來。" }
+        ]
+    },
+    {
+        id: 103,
+        title: "逢甲公園公共廁所",
+        lat: 24.17380,
+        lng: 120.65180,
+        toiletType: "park",
+        toiletTypeName: "市政公園公廁",
+        cleanliness: 3,
+        hasPaper: false,
+        isAccessible: true,
+        motorcycleFriendly: true,
+        hours: "24 小時開放",
+        reporter: "公園散步阿伯",
+        reportTime: "2026-05-18 08:15",
+        description: "逢甲公園內的公共廁所，靠近路邊，周邊有許多路邊機車停車格，十分便利。廁所是24小時的，但晚上較暗。有時候衛生紙會用完，建議自備。乾淨度普通，但有定期打掃。",
+        upvotes: 19,
+        downvotes: 3,
+        comments: [
+            { author: "休閒騎士", date: "2026-05-18 19:30", content: "路過這裡想上廁所很方便，旁邊都是機車位。但有時蚊子有點多。" },
+            { author: "備用衛生紙", date: "2026-05-21 21:00", content: "上次去沒有衛生紙，大家記得自己帶喔！" }
+        ]
+    },
+    {
+        id: 104,
+        title: "7-11 逢大門市公共廁所",
+        lat: 24.17740,
+        lng: 120.65060,
+        toiletType: "convenience_store",
+        toiletTypeName: "超商附設公廁",
+        cleanliness: 4,
+        hasPaper: true,
+        isAccessible: false,
+        motorcycleFriendly: true,
+        hours: "24 小時開放",
+        reporter: "超商常客",
+        reportTime: "2026-05-24 12:00",
+        description: "逢大門市內的廁所，非常方便。門口有機車臨停空間。店員打掃得很勤快，有提供衛生紙。如果不好意思直接使用，可以順便買瓶飲料。無障礙空間受限於店內空間較窄。",
+        upvotes: 28,
+        downvotes: 0,
+        comments: [
+            { author: "美食獵人", date: "2026-05-24 13:15", content: "這家超商廁所非常乾淨，上完順便買杯咖啡很方便！" }
+        ]
+    }
+];
+
+const toiletTypes = {
+    gas_station: "中油加油站公廁",
+    campus: "學校教學大樓公廁",
+    convenience_store: "超商附設公廁",
+    park: "市政公園公廁",
+    other: "其他公共廁所"
+};

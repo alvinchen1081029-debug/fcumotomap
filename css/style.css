@@ -1452,3 +1452,176 @@ header {
     color: var(--accent-cyan);
     border: 1px solid rgba(6, 182, 212, 0.3);
 }
+
+/* --- Public Toilet Feature Styles --- */
+
+/* Mode Switcher Segmented Control */
+.mode-switcher {
+    display: flex;
+    background: rgba(10, 12, 16, 0.7);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 3px;
+    gap: 4px;
+    width: 320px;
+}
+
+.mode-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.6rem 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.mode-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-btn.active {
+    background: var(--bg-tertiary);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mode-btn.active.danger-mode {
+    border-left: 3px solid var(--accent-red);
+    color: #ef4444;
+}
+
+.mode-btn.active.toilet-mode {
+    border-left: 3px solid var(--accent-cyan);
+    color: #06b6d4;
+}
+
+/* Pulsing Cyan Toilet Marker */
+.toilet-pulse-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.toilet-pulse-marker .pulse-ring {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px var(--accent-cyan);
+}
+
+.toilet-pulse-marker .pulse-dot {
+    background-color: var(--accent-cyan);
+    border: 2px solid white;
+}
+
+/* Toilet Details Indicators */
+.toilet-indicators {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.toilet-indicator-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 0.6rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    transition: var(--transition-smooth);
+    color: var(--text-secondary);
+}
+
+.toilet-indicator-card.active {
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.3);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+.toilet-indicator-card.inactive {
+    background: rgba(255, 255, 255, 0.01);
+    border-color: var(--glass-border);
+    color: var(--text-muted);
+}
+
+.toilet-indicator-card.inactive i {
+    opacity: 0.5;
+}
+
+.toilet-indicator-card.inactive span {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.toilet-indicator-card i {
+    font-size: 1.1rem;
+}
+
+.toilet-indicator-card span {
+    font-weight: 600;
+}
+
+/* Custom badge for toilet type */
+.hazard-type-tag.toilet-tag {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* Toilet Specific Badge in Drawers */
+.badge.toilet-tag {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* Checkbox group styling for toilet report form */
+.form-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    background: rgba(10, 12, 16, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.8rem;
+}
+
+.form-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-checkbox-label input {
+    accent-color: var(--accent-cyan);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Cleanliness stars rating theme */
+.rating-stars-input.toilet-stars i.active,
+.rating-stars-input.toilet-stars i:hover,
+.rating-stars-input.toilet-stars i.hovered {
+    color: var(--accent-cyan);
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+}
