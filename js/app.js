@@ -10,11 +10,24 @@ let currentRatingInput = 5;
 let userVotes = {}; // Format: { pointId: 'up' | 'down' | null }
 let heatmapLayerGroup = null;
 let isHeatmapActive = false;
+let favorites = []; // Array of favorited point IDs
+let currentDrawerTab = 'all'; // 'all' or 'fav'
 
 // Initialize Application when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     // Clone mock data to local array to allow in-memory modifications
     points = JSON.parse(JSON.stringify(mockDangerPoints));
+    
+    // Load favorites from localStorage
+    try {
+        const storedFavs = localStorage.getItem("fcu_moto_favorites");
+        if (storedFavs) {
+            favorites = JSON.parse(storedFavs);
+        }
+    } catch (e) {
+        console.error("Failed to load favorites from localStorage", e);
+        favorites = [];
+    }
     
     initMap();
     renderDangerPoints();
@@ -52,16 +65,19 @@ function initMap() {
 }
 
 // Generate animated HTML pulsing icon based on danger level
-function createPulsingIcon(dangerLevel) {
+function createPulsingIcon(dangerLevel, isFav = false) {
     let levelClass = "level-3";
     if (dangerLevel >= 5) levelClass = "level-5";
     else if (dangerLevel >= 4) levelClass = "level-4";
     
+    const favClass = isFav ? " is-fav" : "";
+    const dotContent = isFav ? `<i class="fas fa-heart" style="color: white; font-size: 8px;"></i>` : "";
+    
     return L.divIcon({
-        className: `hazard-pulse-marker ${levelClass}`,
+        className: `hazard-pulse-marker ${levelClass}${favClass}`,
         html: `
             <div class="pulse-ring"></div>
-            <div class="pulse-dot"></div>
+            <div class="pulse-dot">${dotContent}</div>
         `,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
@@ -77,9 +93,10 @@ function renderDangerPoints() {
     markers = {};
 
     points.forEach(point => {
+        const isFav = favorites.includes(point.id);
         // Create custom neon pulsing marker
         const marker = L.marker([point.lat, point.lng], {
-            icon: createPulsingIcon(point.dangerLevel)
+            icon: createPulsingIcon(point.dangerLevel, isFav)
         });
 
         // Add custom tooltip that displays on hover
@@ -123,7 +140,19 @@ function renderListView() {
     listContainer.innerHTML = "";
 
     // Sort by danger level descending
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    let sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+
+    // Filter by tab
+    if (currentDrawerTab === 'fav') {
+        sortedPoints = sortedPoints.filter(point => favorites.includes(point.id));
+    }
+
+    if (sortedPoints.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2.5rem 0; width: 100%;">
+            ${currentDrawerTab === 'fav' ? '💔 尚未收藏任何危險路段。' : '🔍 無符合條件的危險路段。'}
+        </div>`;
+        return;
+    }
 
     sortedPoints.forEach(point => {
         const item = document.createElement("div");
@@ -173,6 +202,19 @@ function showPointDetails(point) {
     document.getElementById("detail-description").innerText = point.description;
     document.getElementById("detail-reporter").innerText = point.reporter;
     document.getElementById("detail-time").innerText = point.reportTime;
+
+    // Update Favorite Toggle Button
+    const favBtn = document.getElementById("favorite-toggle-btn");
+    if (favBtn) {
+        const isFav = favorites.includes(point.id);
+        if (isFav) {
+            favBtn.classList.add("active");
+            favBtn.innerHTML = `<i class="fas fa-heart"></i>`;
+        } else {
+            favBtn.classList.remove("active");
+            favBtn.innerHTML = `<i class="far fa-heart"></i>`;
+        }
+    }
 
     // Draw Stars
     const starContainer = document.getElementById("detail-stars");
@@ -538,6 +580,47 @@ function initUIEvents() {
         document.getElementById("sidebar-right").classList.remove("active");
     });
 
+    // Favorite toggle button in details
+    const favBtn = document.getElementById("favorite-toggle-btn");
+    if (favBtn) {
+        favBtn.addEventListener("click", () => {
+            if (selectedPoint) {
+                toggleFavorite(selectedPoint.id);
+            }
+        });
+    }
+
+    // Tabs inside bottom drawer
+    const tabAll = document.getElementById("tab-all-spots");
+    const tabFav = document.getElementById("tab-fav-spots");
+    if (tabAll && tabFav) {
+        tabAll.addEventListener("click", () => {
+            currentDrawerTab = 'all';
+            tabAll.classList.add("active");
+            tabFav.classList.remove("active");
+            
+            const query = document.getElementById("search-input").value.toLowerCase().trim();
+            if (query) {
+                filterMarkersAndList(query);
+            } else {
+                renderListView();
+            }
+        });
+
+        tabFav.addEventListener("click", () => {
+            currentDrawerTab = 'fav';
+            tabFav.classList.add("active");
+            tabAll.classList.remove("active");
+            
+            const query = document.getElementById("search-input").value.toLowerCase().trim();
+            if (query) {
+                filterMarkersAndList(query);
+            } else {
+                renderListView();
+            }
+        });
+    }
+
     // List Drawer collapsible behaviour
     const drawer = document.getElementById("list-drawer");
     const drawerToggle = document.getElementById("drawer-toggle");
@@ -604,6 +687,9 @@ function openUserSettingsPanel() {
     formView.style.display = "none";
     userSettingsView.style.display = "block";
 
+    // Render favorites list
+    renderSettingsFavoritesList();
+
     sidebar.classList.add("active");
 }
 
@@ -619,10 +705,15 @@ function hideModal(modalId) {
 // Filter markers based on search query
 function filterMarkersAndList(query) {
     points.forEach(point => {
-        const matches = point.title.toLowerCase().includes(query) || 
+        let matches = point.title.toLowerCase().includes(query) || 
                         point.description.toLowerCase().includes(query) ||
                         point.hazardTypeName.toLowerCase().includes(query);
         
+        // If in favorite tab, only show match if it is also in favorites!
+        if (currentDrawerTab === 'fav' && !favorites.includes(point.id)) {
+            matches = false;
+        }
+
         const marker = markers[point.id];
         if (marker) {
             if (matches) {
@@ -635,15 +726,22 @@ function filterMarkersAndList(query) {
 
     // Refresh Drawer list
     const listContainer = document.getElementById("drawer-items-list");
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    let sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
     
+    if (currentDrawerTab === 'fav') {
+        sortedPoints = sortedPoints.filter(point => favorites.includes(point.id));
+    }
+
     listContainer.innerHTML = "";
+    
+    let renderedCount = 0;
     sortedPoints.forEach(point => {
         const matches = point.title.toLowerCase().includes(query) || 
                         point.description.toLowerCase().includes(query) ||
                         point.hazardTypeName.toLowerCase().includes(query);
         
         if (!matches) return;
+        renderedCount++;
 
         const item = document.createElement("div");
         item.className = "drawer-item";
@@ -667,6 +765,12 @@ function filterMarkersAndList(query) {
 
         listContainer.appendChild(item);
     });
+
+    if (renderedCount === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0; width: 100%;">
+            🔍 無符合條件的危險路段。
+        </div>`;
+    }
 }
 
 // Trigger floating cyber toasts notifications
@@ -691,4 +795,102 @@ function getCurrentDateTimeString() {
     const min = String(now.getMinutes()).padStart(2, '0');
     
     return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+// Toggle Favorite State
+function toggleFavorite(pointId) {
+    const index = favorites.indexOf(pointId);
+    let isAdded = false;
+    
+    if (index === -1) {
+        favorites.push(pointId);
+        isAdded = true;
+        showNotificationToast("💖 已加入收藏地點！");
+    } else {
+        favorites.splice(index, 1);
+        isAdded = false;
+        showNotificationToast("💔 已取消收藏");
+    }
+    
+    // Persist to localStorage
+    try {
+        localStorage.setItem("fcu_moto_favorites", JSON.stringify(favorites));
+    } catch (e) {
+        console.error("Failed to save favorites to localStorage", e);
+    }
+    
+    // Update Detail View Button if active
+    if (selectedPoint && selectedPoint.id === pointId) {
+        const favBtn = document.getElementById("favorite-toggle-btn");
+        if (favBtn) {
+            if (isAdded) {
+                favBtn.classList.add("active");
+                favBtn.innerHTML = `<i class="fas fa-heart"></i>`;
+            } else {
+                favBtn.classList.remove("active");
+                favBtn.innerHTML = `<i class="far fa-heart"></i>`;
+            }
+        }
+    }
+    
+    // Refresh Map markers to update icon color
+    renderDangerPoints();
+    
+    // Refresh lists
+    const query = document.getElementById("search-input").value.toLowerCase().trim();
+    if (query) {
+        filterMarkersAndList(query);
+    } else {
+        renderListView();
+    }
+    
+    // Refresh Settings Favorites View
+    renderSettingsFavoritesList();
+}
+
+// Render favorites inside the User Profile / Settings sidebar
+function settingsFavNavigate(lat, lng, point) {
+    map.panTo([lat, lng - 0.0015]);
+    showPointDetails(point);
+}
+
+function renderSettingsFavoritesList() {
+    const container = document.getElementById("settings-favorites-list");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    
+    const favPoints = points.filter(point => favorites.includes(point.id));
+    
+    favPoints.forEach(point => {
+        const card = document.createElement("div");
+        card.className = "fav-location-card";
+        
+        card.innerHTML = `
+            <div>
+                <div class="fav-location-card-title">${point.title}</div>
+                <div class="fav-location-card-meta">
+                    <span class="badge danger-${point.dangerLevel}">★ ${point.dangerLevel}</span>
+                    <span>${point.hazardTypeName}</span>
+                </div>
+            </div>
+            <div class="fav-location-card-action" title="取消收藏">
+                <i class="fas fa-heart-broken"></i>
+            </div>
+        `;
+        
+        // Clicking card pans map and shows details
+        card.addEventListener("click", (e) => {
+            // If clicking the heart-broken button, stop propagation and toggle
+            if (e.target.closest(".fav-location-card-action")) {
+                e.stopPropagation();
+                toggleFavorite(point.id);
+                return;
+            }
+            
+            settingsFavNavigate(point.lat, point.lng, point);
+        });
+        
+        container.appendChild(card);
+    });
 }
