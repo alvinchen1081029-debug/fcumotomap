@@ -1,6 +1,8 @@
 // FCU Moto Map - Danger Rating System Mock Application Logic
 
 let points = [];
+let toiletPoints = [];
+let currentMode = 'danger';
 let map;
 let markers = {};
 let selectedPoint = null;
@@ -15,9 +17,10 @@ let isHeatmapActive = false;
 document.addEventListener("DOMContentLoaded", () => {
     // Clone mock data to local array to allow in-memory modifications
     points = JSON.parse(JSON.stringify(mockDangerPoints));
+    toiletPoints = JSON.parse(JSON.stringify(mockToiletPoints));
     
     initMap();
-    renderDangerPoints();
+    renderPoints();
     updateGlobalStats();
     initUIEvents();
     initStarRatingBehavior();
@@ -68,33 +71,65 @@ function createPulsingIcon(dangerLevel) {
     });
 }
 
-// Render danger points to Leaflet Map and List View
-function renderDangerPoints() {
+// Generate animated HTML pulsing toilet icon
+function createToiletIcon() {
+    return L.divIcon({
+        className: "hazard-pulse-marker toilet-pulse-marker",
+        html: `
+            <div class="pulse-ring"></div>
+            <div class="pulse-dot" style="display:flex; align-items:center; justify-content:center; color:white; font-size:7px;"><i class="fas fa-restroom"></i></div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+}
+
+// Render points to Leaflet Map and List View based on currentMode
+function renderPoints() {
     // Clear existing markers
     for (let id in markers) {
         map.removeLayer(markers[id]);
     }
     markers = {};
 
-    points.forEach(point => {
-        // Create custom neon pulsing marker
+    const activePoints = currentMode === 'danger' ? points : toiletPoints;
+
+    activePoints.forEach(point => {
+        let markerIcon;
+        if (currentMode === 'danger') {
+            markerIcon = createPulsingIcon(point.dangerLevel);
+        } else {
+            markerIcon = createToiletIcon();
+        }
+
         const marker = L.marker([point.lat, point.lng], {
-            icon: createPulsingIcon(point.dangerLevel)
+            icon: markerIcon
         });
 
-        // Add custom tooltip that displays on hover
-        marker.bindTooltip(`
-            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
-                <span style="color: var(--accent-red); margin-right: 5px;">★ ${point.dangerLevel}</span> ${point.title}
-            </div>
-        `, {
+        // Tooltip text
+        let tooltipHTML;
+        if (currentMode === 'danger') {
+            tooltipHTML = `
+                <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                    <span style="color: var(--accent-red); margin-right: 5px;">★ ${point.dangerLevel}</span> ${point.title}
+                </div>
+            `;
+        } else {
+            tooltipHTML = `
+                <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                    <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-restroom"></i></span> ${point.title}
+                </div>
+            `;
+        }
+
+        marker.bindTooltip(tooltipHTML, {
             direction: 'top',
             offset: [0, -10],
             opacity: 0.9,
             className: 'custom-map-tooltip'
         });
 
-        // Click event opens custom details sidebar
+        // Click event opens sidebar details
         marker.on('click', () => {
             showPointDetails(point);
         });
@@ -111,9 +146,17 @@ function renderDangerPoints() {
 
 // Update Header Stats
 function updateGlobalStats() {
-    document.getElementById("total-danger-spots").innerText = points.length;
+    const totalPoints = currentMode === 'danger' ? points.length : toiletPoints.length;
+    document.getElementById("total-danger-spots").innerText = totalPoints;
     
-    const totalVotes = points.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
+    // Change label text dynamically
+    const labelSpan = document.querySelector(".stat-pill.spots span");
+    if (labelSpan) {
+        labelSpan.innerText = currentMode === 'danger' ? "危險路標:" : "公共廁所:";
+    }
+    
+    const activePointsList = currentMode === 'danger' ? points : toiletPoints;
+    const totalVotes = activePointsList.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
     document.getElementById("total-votes-count").innerText = totalVotes;
 }
 
@@ -122,17 +165,32 @@ function renderListView() {
     const listContainer = document.getElementById("drawer-items-list");
     listContainer.innerHTML = "";
 
-    // Sort by danger level descending
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    const activePoints = currentMode === 'danger' ? points : toiletPoints;
+
+    // Sort by level/rating descending
+    let sortedPoints;
+    if (currentMode === 'danger') {
+        sortedPoints = [...activePoints].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    } else {
+        sortedPoints = [...activePoints].sort((a, b) => b.cleanliness - a.cleanliness);
+    }
 
     sortedPoints.forEach(point => {
         const item = document.createElement("div");
         item.className = "drawer-item";
+        
+        let metaBadge;
+        if (currentMode === 'danger') {
+            metaBadge = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        } else {
+            metaBadge = `<span class="badge toilet-tag">🚽 乾淨度 ${point.cleanliness}</span>`;
+        }
+
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    <span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>
+                    ${metaBadge}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
@@ -151,7 +209,7 @@ function renderListView() {
     });
 }
 
-// Show Danger Point Details in Sidebar
+// Show Danger/Toilet Point Details in Sidebar
 function showPointDetails(point) {
     selectedPoint = point;
     isAddingMode = false;
@@ -169,7 +227,32 @@ function showPointDetails(point) {
     
     // Fill Details
     document.getElementById("detail-title").innerText = point.title;
-    document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
+    
+    const isToilet = point.toiletType !== undefined;
+    
+    // Set titles/labels dynamically
+    document.getElementById("detail-desc-label").innerText = isToilet ? "公廁環境與停車描述" : "騎士回報詳情";
+    
+    if (isToilet) {
+        document.getElementById("detail-hazard-name").innerText = point.toiletTypeName;
+        document.getElementById("detail-hazard-name").className = "hazard-type-tag toilet-tag";
+        
+        // Show Toilet details card
+        document.getElementById("toilet-details-card").style.display = "block";
+        document.getElementById("detail-toilet-hours").innerText = point.hours;
+        
+        // Toilet attribute indicators
+        toggleIndicatorCard("detail-toilet-paper", point.hasPaper);
+        toggleIndicatorCard("detail-toilet-accessible", point.isAccessible);
+        toggleIndicatorCard("detail-toilet-parking", point.motorcycleFriendly);
+    } else {
+        document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
+        document.getElementById("detail-hazard-name").className = "hazard-type-tag";
+        
+        // Hide Toilet details card
+        document.getElementById("toilet-details-card").style.display = "none";
+    }
+    
     document.getElementById("detail-description").innerText = point.description;
     document.getElementById("detail-reporter").innerText = point.reporter;
     document.getElementById("detail-time").innerText = point.reportTime;
@@ -177,9 +260,11 @@ function showPointDetails(point) {
     // Draw Stars
     const starContainer = document.getElementById("detail-stars");
     starContainer.innerHTML = "";
+    const ratingVal = isToilet ? point.cleanliness : point.dangerLevel;
+    
     for (let i = 1; i <= 5; i++) {
         const star = document.createElement("i");
-        star.className = i <= point.dangerLevel ? "fas fa-star" : "far fa-star";
+        star.className = i <= ratingVal ? "fas fa-star" : "far fa-star";
         starContainer.appendChild(star);
     }
 
@@ -209,6 +294,18 @@ function showPointDetails(point) {
     // Smoothly pan map center slightly to the left to avoid sidebar overlap on desktop
     const targetLng = point.lng - 0.0015; // Shift center slightly
     map.panTo([point.lat, targetLng]);
+}
+
+// Helper to toggle detail indicators
+function toggleIndicatorCard(elementId, isActive) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        if (isActive) {
+            el.className = "toilet-indicator-card active";
+        } else {
+            el.className = "toilet-indicator-card inactive";
+        }
+    }
 }
 
 // Render Comments List
@@ -374,13 +471,60 @@ function openAddForm(lat, lng) {
     // Reset Form fields
     document.getElementById("form-title").value = "";
     document.getElementById("form-description").value = "";
-    document.getElementById("form-hazard-type").value = "illegal_parking";
+    
+    // Toggle form attributes based on mode
+    const isToilet = currentMode === 'toilet';
+    
+    // Toggle toilet fields
+    document.getElementById("form-toilet-attributes").style.display = isToilet ? "block" : "none";
+    document.getElementById("form-toilet-hours-group").style.display = isToilet ? "block" : "none";
+    
+    // Initialize stars style
+    const starsContainer = document.getElementById("form-rating-stars");
+    if (isToilet) {
+        starsContainer.className = "rating-stars-input toilet-stars";
+        document.getElementById("form-rating-label").innerText = "評定乾淨程度 (1為髒亂，5為極度乾淨)";
+        document.getElementById("form-title-label").innerText = "公共廁所名稱";
+        document.getElementById("form-title").placeholder = "例如：中油大雅加油站公廁";
+        document.getElementById("form-hazard-type-label").innerText = "公廁種類分類";
+        document.getElementById("form-desc-label").innerText = "公廁環境與停車描述";
+        document.getElementById("form-description").placeholder = "請描述該公廁的位置指引，以及給騎士的停車建議或使用心得。";
+        document.getElementById("form-submit-btn").innerHTML = '<i class="fas fa-check-circle"></i> 提交公共廁所回報';
+        
+        // Populate options with toilet types
+        populateFormHazardType(toiletTypes);
+    } else {
+        starsContainer.className = "rating-stars-input";
+        document.getElementById("form-rating-label").innerText = "評定危險星級 (1為低，5為極度危險)";
+        document.getElementById("form-title-label").innerText = "危險地段/路口名稱";
+        document.getElementById("form-title").placeholder = "例如：河南路二段與西安街口";
+        document.getElementById("form-hazard-type-label").innerText = "危險情況分類";
+        document.getElementById("form-desc-label").innerText = "具體危險路況描述";
+        document.getElementById("form-description").placeholder = "請詳細說明該路段何時最危險，有什麼潛在盲點？給其他騎士的避雷建議？";
+        document.getElementById("form-submit-btn").innerHTML = '<i class="fas fa-check-circle"></i> 提交危險標記回報';
+        
+        // Populate options with hazard types
+        populateFormHazardType(hazardTypes);
+    }
+    
     resetStarRatingInput();
 
     sidebar.classList.add("active");
     
     // Pan map to selection
     map.panTo([lat, lng - 0.0015]);
+}
+
+// Populate form hazard/toilet type select dropdown
+function populateFormHazardType(optionsMap) {
+    const select = document.getElementById("form-hazard-type");
+    select.innerHTML = "";
+    for (let key in optionsMap) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.innerText = optionsMap[key];
+        select.appendChild(opt);
+    }
 }
 
 // Star Rating input handler
@@ -420,7 +564,7 @@ function resetStarRatingInput() {
     highlightStars(5);
 }
 
-// Submit New Danger Point
+// Submit New Danger/Toilet Point
 function submitReport(event) {
     event.preventDefault();
 
@@ -429,45 +573,81 @@ function submitReport(event) {
     const description = document.getElementById("form-description").value.trim();
 
     if (!title || !description) {
-        alert("請完整填寫標題與詳細描述！");
+        alert("請完整填寫名稱與詳細描述！");
         return;
     }
 
-    const typeNames = {
-        illegal_parking: "臨停違停嚴重 / 視線死角",
-        crowded: "人車交織 / 路面狹窄油滑",
-        fast_lane_merge: "快慢車道匯流 / 轉彎未讓直行",
-        bad_design: "待轉區設計不良 / 道路設計缺失",
-        sudden_stop: "突發急停 / 外送臨停多",
-        other: "其他道路潛在危險"
-    };
+    if (currentMode === 'danger') {
+        const typeNames = {
+            illegal_parking: "臨停違停嚴重 / 視線死角",
+            crowded: "人車交織 / 路面狹窄油滑",
+            fast_lane_merge: "快慢車道匯流 / 轉彎未讓直行",
+            bad_design: "待轉區設計不良 / 道路設計缺失",
+            sudden_stop: "突發急停 / 外送臨停多",
+            other: "其他道路潛在危險"
+        };
 
-    const newPoint = {
-        id: points.length + 1,
-        title: title,
-        lat: newPointLatLng.lat,
-        lng: newPointLatLng.lng,
-        dangerLevel: currentRatingInput,
-        hazardType: typeKey,
-        hazardTypeName: typeNames[typeKey],
-        reporter: "逢甲新鮮人",
-        reportTime: getCurrentDateTimeString(),
-        description: description,
-        upvotes: 0,
-        downvotes: 0,
-        comments: []
-    };
+        const newPoint = {
+            id: points.length + 1,
+            title: title,
+            lat: newPointLatLng.lat,
+            lng: newPointLatLng.lng,
+            dangerLevel: currentRatingInput,
+            hazardType: typeKey,
+            hazardTypeName: typeNames[typeKey],
+            reporter: "逢甲新鮮人",
+            reportTime: getCurrentDateTimeString(),
+            description: description,
+            upvotes: 0,
+            downvotes: 0,
+            comments: []
+        };
 
-    // Push into in-memory storage
-    points.push(newPoint);
+        points.push(newPoint);
+        renderPoints();
+        updateGlobalStats();
+        showPointDetails(newPoint);
+        showNotificationToast("🎉 危險點回報成功！感謝您的守護！");
+    } else {
+        const typeNames = {
+            gas_station: "中油加油站公廁",
+            campus: "學校教學大樓公廁",
+            convenience_store: "超商附設公廁",
+            park: "市政公園公廁",
+            other: "其他公共廁所"
+        };
 
-    // Refresh Map and Sidebar details
-    renderDangerPoints();
-    updateGlobalStats();
-    showPointDetails(newPoint);
+        const hours = document.getElementById("form-toilet-hours").value.trim() || "24 小時開放";
+        const hasPaper = document.getElementById("form-has-paper").checked;
+        const isAccessible = document.getElementById("form-is-accessible").checked;
+        const motorcycleFriendly = document.getElementById("form-motorcycle-friendly").checked;
 
-    // Success Notification Toast
-    showNotificationToast("🎉 危險點回報成功！感謝您的守護！");
+        const newToilet = {
+            id: toiletPoints.length + 101, // offset to avoid conflict
+            title: title,
+            lat: newPointLatLng.lat,
+            lng: newPointLatLng.lng,
+            cleanliness: currentRatingInput,
+            toiletType: typeKey,
+            toiletTypeName: typeNames[typeKey],
+            hasPaper: hasPaper,
+            isAccessible: isAccessible,
+            motorcycleFriendly: motorcycleFriendly,
+            hours: hours,
+            reporter: "逢甲新鮮人",
+            reportTime: getCurrentDateTimeString(),
+            description: description,
+            upvotes: 0,
+            downvotes: 0,
+            comments: []
+        };
+
+        toiletPoints.push(newToilet);
+        renderPoints();
+        updateGlobalStats();
+        showPointDetails(newToilet);
+        showNotificationToast("🎉 公共廁所回報成功！騎士們感謝您！");
+    }
 }
 
 // Toggle Heatmap Overlay Simulation
@@ -477,12 +657,22 @@ function toggleHeatmap() {
 
     if (isHeatmapActive) {
         btn.classList.add("heatmap-active");
-        btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉熱點圖模式`;
-        drawHeatmap();
-        showNotificationToast("🔥 已開啟危險熱點分析模式");
+        if (currentMode === 'danger') {
+            btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉危險熱點圖`;
+            drawHeatmap();
+            showNotificationToast("🔥 已開啟危險熱點分析模式");
+        } else {
+            btn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉公廁分佈圖`;
+            drawHeatmap();
+            showNotificationToast("🚻 已開啟公廁分佈分析模式");
+        }
     } else {
         btn.classList.remove("heatmap-active");
-        btn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        if (currentMode === 'danger') {
+            btn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        } else {
+            btn.innerHTML = `<i class="fas fa-fire"></i> 開啟公廁分佈圖`;
+        }
         heatmapLayerGroup.clearLayers();
         showNotificationToast("已切換回標準地圖視圖");
     }
@@ -492,20 +682,37 @@ function toggleHeatmap() {
 function drawHeatmap() {
     heatmapLayerGroup.clearLayers();
 
-    points.forEach(point => {
-        // Danger score determines color/opacity/radius
-        let color = '#ef4444'; // Red
-        let radius = 60;
-        let opacity = 0.25;
+    const activePoints = currentMode === 'danger' ? points : toiletPoints;
 
-        if (point.dangerLevel === 4) {
-            color = '#f97316'; // Orange
-            radius = 50;
+    activePoints.forEach(point => {
+        let color, radius, opacity;
+        
+        if (currentMode === 'danger') {
+            color = '#ef4444'; // Red
+            radius = 60;
+            opacity = 0.25;
+
+            if (point.dangerLevel === 4) {
+                color = '#f97316'; // Orange
+                radius = 50;
+                opacity = 0.22;
+            } else if (point.dangerLevel === 3) {
+                color = '#f59e0b'; // Yellow
+                radius = 40;
+                opacity = 0.18;
+            }
+        } else {
+            color = '#06b6d4'; // Cyan
+            radius = 55;
             opacity = 0.22;
-        } else if (point.dangerLevel === 3) {
-            color = '#f59e0b'; // Yellow
-            radius = 40;
-            opacity = 0.18;
+
+            if (point.cleanliness === 4) {
+                radius = 45;
+                opacity = 0.18;
+            } else if (point.cleanliness === 3) {
+                radius = 35;
+                opacity = 0.15;
+            }
         }
 
         const circle = L.circle([point.lat, point.lng], {
@@ -587,6 +794,88 @@ function initUIEvents() {
         const query = e.target.value.toLowerCase().trim();
         filterMarkersAndList(query);
     });
+
+    // Mode Switcher clicking
+    const modeDangerBtn = document.getElementById("mode-danger-btn");
+    const modeToiletBtn = document.getElementById("mode-toilet-btn");
+
+    modeDangerBtn.addEventListener("click", () => {
+        if (currentMode === 'danger') return;
+        switchMode('danger');
+    });
+
+    modeToiletBtn.addEventListener("click", () => {
+        if (currentMode === 'toilet') return;
+        switchMode('toilet');
+    });
+}
+
+// Switch active map mode (Danger points vs Toilets)
+function switchMode(mode) {
+    currentMode = mode;
+    
+    const modeDangerBtn = document.getElementById("mode-danger-btn");
+    const modeToiletBtn = document.getElementById("mode-toilet-btn");
+    const legendDanger = document.getElementById("legend-danger");
+    const legendToilet = document.getElementById("legend-toilet");
+    const addBtn = document.getElementById("add-danger-btn");
+    const drawerTitle = document.getElementById("drawer-list-title");
+    const drawerToggleText = document.getElementById("drawer-toggle-text");
+    const searchInput = document.getElementById("search-input");
+    const heatmapBtn = document.getElementById("heatmap-btn");
+
+    // Close right sidebar
+    document.getElementById("sidebar-right").classList.remove("active");
+
+    if (mode === 'danger') {
+        modeDangerBtn.classList.add("active");
+        modeToiletBtn.classList.remove("active");
+        
+        legendDanger.style.display = "block";
+        legendToilet.style.display = "none";
+        
+        addBtn.innerHTML = `<i class="fas fa-plus-circle"></i> + 回報危險路段`;
+        addBtn.style.borderLeftColor = "var(--accent-red)";
+        
+        drawerTitle.innerText = "逢甲學區危險路段清單";
+        drawerToggleText.innerText = "瀏覽危險清單";
+        searchInput.placeholder = "搜尋路段、交叉路口或分類...";
+        
+        // Reset heatmap button text
+        if (isHeatmapActive) {
+            heatmapBtn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉危險熱點圖`;
+        } else {
+            heatmapBtn.innerHTML = `<i class="fas fa-fire"></i> 開啟危險熱點圖`;
+        }
+    } else {
+        modeDangerBtn.classList.remove("active");
+        modeToiletBtn.classList.add("active");
+        
+        legendDanger.style.display = "none";
+        legendToilet.style.display = "block";
+        
+        addBtn.innerHTML = `<i class="fas fa-plus-circle"></i> + 回報公共廁所`;
+        addBtn.style.borderLeftColor = "var(--accent-cyan)";
+        
+        drawerTitle.innerText = "逢甲學區公廁清單";
+        drawerToggleText.innerText = "瀏覽公廁清單";
+        searchInput.placeholder = "搜尋公廁、地點、超商、公園...";
+        
+        // Reset heatmap button text
+        if (isHeatmapActive) {
+            heatmapBtn.innerHTML = `<i class="fas fa-layer-group"></i> 關閉公廁分佈圖`;
+        } else {
+            heatmapBtn.innerHTML = `<i class="fas fa-fire"></i> 開啟公廁分佈圖`;
+        }
+    }
+
+    // Reset search
+    searchInput.value = "";
+
+    // Re-render
+    renderPoints();
+    updateGlobalStats();
+    showNotificationToast(mode === 'danger' ? "已切換至危險路段模式" : "已切換至公廁尋找模式");
 }
 
 // Open and load customized account settings card inside sidebar
@@ -618,10 +907,19 @@ function hideModal(modalId) {
 
 // Filter markers based on search query
 function filterMarkersAndList(query) {
-    points.forEach(point => {
-        const matches = point.title.toLowerCase().includes(query) || 
-                        point.description.toLowerCase().includes(query) ||
-                        point.hazardTypeName.toLowerCase().includes(query);
+    const activePoints = currentMode === 'danger' ? points : toiletPoints;
+
+    activePoints.forEach(point => {
+        let matches;
+        if (currentMode === 'danger') {
+            matches = point.title.toLowerCase().includes(query) || 
+                      point.description.toLowerCase().includes(query) ||
+                      point.hazardTypeName.toLowerCase().includes(query);
+        } else {
+            matches = point.title.toLowerCase().includes(query) || 
+                      point.description.toLowerCase().includes(query) ||
+                      point.toiletTypeName.toLowerCase().includes(query);
+        }
         
         const marker = markers[point.id];
         if (marker) {
@@ -635,23 +933,43 @@ function filterMarkersAndList(query) {
 
     // Refresh Drawer list
     const listContainer = document.getElementById("drawer-items-list");
-    const sortedPoints = [...points].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    let sortedPoints;
+    if (currentMode === 'danger') {
+        sortedPoints = [...activePoints].sort((a, b) => b.dangerLevel - a.dangerLevel);
+    } else {
+        sortedPoints = [...activePoints].sort((a, b) => b.cleanliness - a.cleanliness);
+    }
     
     listContainer.innerHTML = "";
     sortedPoints.forEach(point => {
-        const matches = point.title.toLowerCase().includes(query) || 
-                        point.description.toLowerCase().includes(query) ||
-                        point.hazardTypeName.toLowerCase().includes(query);
+        let matches;
+        if (currentMode === 'danger') {
+            matches = point.title.toLowerCase().includes(query) || 
+                      point.description.toLowerCase().includes(query) ||
+                      point.hazardTypeName.toLowerCase().includes(query);
+        } else {
+            matches = point.title.toLowerCase().includes(query) || 
+                      point.description.toLowerCase().includes(query) ||
+                      point.toiletTypeName.toLowerCase().includes(query);
+        }
         
         if (!matches) return;
 
         const item = document.createElement("div");
         item.className = "drawer-item";
+        
+        let metaBadge;
+        if (currentMode === 'danger') {
+            metaBadge = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        } else {
+            metaBadge = `<span class="badge toilet-tag">🚽 乾淨度 ${point.cleanliness}</span>`;
+        }
+
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    <span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>
+                    ${metaBadge}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
