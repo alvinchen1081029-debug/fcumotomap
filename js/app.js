@@ -1,10 +1,12 @@
 // FCU Moto Map - Danger Rating System Mock Application Logic
 
 let points = [];
-let toiletPoints = [];
-let currentMode = 'danger';
+let leftTurnPoints = [];
 let map;
 let markers = {};
+let leftTurnMarkers = {};
+let showDangerLayer = true;
+let showLeftTurnLayer = true;
 let selectedPoint = null;
 let isAddingMode = false;
 let newPointLatLng = null;
@@ -12,12 +14,14 @@ let currentRatingInput = 5;
 let userVotes = {}; // Format: { pointId: 'up' | 'down' | null }
 let heatmapLayerGroup = null;
 let isHeatmapActive = false;
+let currentTheme = 'dark';
+let tileLayer = null;
 
 // Initialize Application when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     // Clone mock data to local array to allow in-memory modifications
     points = JSON.parse(JSON.stringify(mockDangerPoints));
-    toiletPoints = JSON.parse(JSON.stringify(mockToiletPoints));
+    leftTurnPoints = JSON.parse(JSON.stringify(mockLeftTurnPoints));
     
     initMap();
     renderPoints();
@@ -42,101 +46,135 @@ function initMap() {
         position: 'bottomright'
     }).addTo(map);
 
-    // Dark Map Style (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd'
-    }).addTo(map);
+    // Initial tile layer load (default to dark mode)
+    setMapStyle('dark');
 
     heatmapLayerGroup = L.layerGroup().addTo(map);
+    gasLayerGroup = L.layerGroup().addTo(map);
+    parkingLayerGroup = L.layerGroup().addTo(map);
 
     // Map Click Handler
     map.on('click', handleMapClick);
 }
 
+// Seamlessly switch map tile layers between day light and night dark
+function setMapStyle(style) {
+    if (tileLayer) {
+        map.removeLayer(tileLayer);
+    }
+    
+    let url;
+    if (style === 'light') {
+        url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    } else {
+        url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    }
+    
+    tileLayer = L.tileLayer(url, {
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }).addTo(map);
+}
+
 // Generate animated HTML pulsing icon based on danger level
-function createPulsingIcon(dangerLevel) {
+function createPulsingIcon(dangerLevel, isLeftTurn = false) {
+    if (isLeftTurn) {
+        return L.divIcon({
+            className: `hazard-pulse-marker level-leftturn`,
+            html: `
+                <div class="pulse-ring"></div>
+                <div class="pulse-dot" style="display: flex; justify-content: center; align-items: center;"><i class="fas fa-redo" style="color: white; font-size: 6px; transform: rotate(90deg);"></i></div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+    }
+    
     let levelClass = "level-3";
     if (dangerLevel >= 5) levelClass = "level-5";
     else if (dangerLevel >= 4) levelClass = "level-4";
     
+    const favClass = isFav ? " is-fav" : "";
+    const dotContent = isFav ? `<i class="fas fa-heart" style="color: white; font-size: 8px;"></i>` : "";
+    
     return L.divIcon({
-        className: `hazard-pulse-marker ${levelClass}`,
+        className: `hazard-pulse-marker ${levelClass}${favClass}`,
         html: `
             <div class="pulse-ring"></div>
-            <div class="pulse-dot"></div>
+            <div class="pulse-dot">${dotContent}</div>
         `,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
     });
 }
 
-// Generate animated HTML pulsing toilet icon
-function createToiletIcon() {
-    return L.divIcon({
-        className: "hazard-pulse-marker toilet-pulse-marker",
-        html: `
-            <div class="pulse-ring"></div>
-            <div class="pulse-dot" style="display:flex; align-items:center; justify-content:center; color:white; font-size:7px;"><i class="fas fa-restroom"></i></div>
-        `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-    });
-}
-
-// Render points to Leaflet Map and List View based on currentMode
-function renderPoints() {
-    // Clear existing markers
+// Render danger points to Leaflet Map and List View
+function renderDangerPoints() {
+    // Clear existing danger markers
     for (let id in markers) {
         map.removeLayer(markers[id]);
     }
     markers = {};
 
-    const activePoints = currentMode === 'danger' ? points : toiletPoints;
+    // Clear existing left turn markers
+    for (let id in leftTurnMarkers) {
+        map.removeLayer(leftTurnMarkers[id]);
+    }
+    leftTurnMarkers = {};
 
-    activePoints.forEach(point => {
-        let markerIcon;
-        if (currentMode === 'danger') {
-            markerIcon = createPulsingIcon(point.dangerLevel);
-        } else {
-            markerIcon = createToiletIcon();
-        }
+    // Render Danger Points if checked
+    if (showDangerLayer) {
+        points.forEach(point => {
+            const marker = L.marker([point.lat, point.lng], {
+                icon: createPulsingIcon(point.dangerLevel, false)
+            });
 
-        const marker = L.marker([point.lat, point.lng], {
-            icon: markerIcon
-        });
-
-        // Tooltip text
-        let tooltipHTML;
-        if (currentMode === 'danger') {
-            tooltipHTML = `
-                <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+            marker.bindTooltip(`
+                <div style="background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
                     <span style="color: var(--accent-red); margin-right: 5px;">★ ${point.dangerLevel}</span> ${point.title}
                 </div>
-            `;
-        } else {
-            tooltipHTML = `
-                <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
-                    <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-restroom"></i></span> ${point.title}
+            `, {
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.95,
+                className: 'custom-map-tooltip'
+            });
+
+            marker.on('click', () => {
+                showPointDetails(point);
+            });
+
+            marker.addTo(map);
+            markers[point.id] = marker;
+        });
+    }
+
+    // Render Left Turn Points if checked
+    if (showLeftTurnLayer) {
+        leftTurnPoints.forEach(point => {
+            const marker = L.marker([point.lat, point.lng], {
+                icon: createPulsingIcon(point.dangerLevel, true)
+            });
+
+            marker.bindTooltip(`
+                <div style="background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                    <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-redo"></i> 待轉</span> ${point.title}
                 </div>
-            `;
-        }
+            `, {
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.95,
+                className: 'custom-map-tooltip'
+            });
 
-        marker.bindTooltip(tooltipHTML, {
-            direction: 'top',
-            offset: [0, -10],
-            opacity: 0.9,
-            className: 'custom-map-tooltip'
+            marker.on('click', () => {
+                showPointDetails(point);
+            });
+
+            marker.addTo(map);
+            leftTurnMarkers[point.id] = marker;
         });
-
-        // Click event opens sidebar details
-        marker.on('click', () => {
-            showPointDetails(point);
-        });
-
-        marker.addTo(map);
-        markers[point.id] = marker;
-    });
+    }
 
     renderListView();
     if (isHeatmapActive) {
@@ -146,18 +184,11 @@ function renderPoints() {
 
 // Update Header Stats
 function updateGlobalStats() {
-    const totalPoints = currentMode === 'danger' ? points.length : toiletPoints.length;
-    document.getElementById("total-danger-spots").innerText = totalPoints;
+    document.getElementById("total-danger-spots").innerText = points.length + leftTurnPoints.length;
     
-    // Change label text dynamically
-    const labelSpan = document.querySelector(".stat-pill.spots span");
-    if (labelSpan) {
-        labelSpan.innerText = currentMode === 'danger' ? "危險路標:" : "公共廁所:";
-    }
-    
-    const activePointsList = currentMode === 'danger' ? points : toiletPoints;
-    const totalVotes = activePointsList.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
-    document.getElementById("total-votes-count").innerText = totalVotes;
+    const totalDangerVotes = points.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
+    const totalLeftTurnVotes = leftTurnPoints.reduce((sum, p) => sum + p.upvotes + p.downvotes, 0);
+    document.getElementById("total-votes-count").innerText = totalDangerVotes + totalLeftTurnVotes;
 }
 
 // Render Sidebar List View
@@ -165,36 +196,42 @@ function renderListView() {
     const listContainer = document.getElementById("drawer-items-list");
     listContainer.innerHTML = "";
 
-    const activePoints = currentMode === 'danger' ? points : toiletPoints;
-
-    // Sort by level/rating descending
-    let sortedPoints;
-    if (currentMode === 'danger') {
-        sortedPoints = [...activePoints].sort((a, b) => b.dangerLevel - a.dangerLevel);
-    } else {
-        sortedPoints = [...activePoints].sort((a, b) => b.cleanliness - a.cleanliness);
+    let combined = [];
+    if (showDangerLayer) {
+        combined = [...combined, ...points];
+    }
+    if (showLeftTurnLayer) {
+        combined = [...combined, ...leftTurnPoints];
     }
 
-    sortedPoints.forEach(point => {
+    // Sort by danger level descending
+    combined.sort((a, b) => b.dangerLevel - a.dangerLevel);
+
+    if (combined.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1.5rem 0;">目前無符合篩選條件的標記。</div>`;
+        return;
+    }
+
+    combined.forEach(point => {
         const item = document.createElement("div");
         item.className = "drawer-item";
         
-        let metaBadge;
-        if (currentMode === 'danger') {
-            metaBadge = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        let badgeHtml = "";
+        if (point.isLeftTurn) {
+            badgeHtml = `<span class="badge leftturn-badge">兩段式左轉</span>`;
         } else {
-            metaBadge = `<span class="badge toilet-tag">🚽 乾淨度 ${point.cleanliness}</span>`;
+            badgeHtml = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
         }
 
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    ${metaBadge}
+                    ${badgeHtml}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
-            <div class="drawer-item-votes">
+            <div class="drawer-item-votes" style="color: ${point.isLeftTurn ? 'var(--accent-cyan)' : 'var(--accent-blue)'}">
                 <i class="fas fa-thumbs-up"></i> ${point.upvotes}
             </div>
         `;
@@ -224,48 +261,56 @@ function showPointDetails(point) {
     detailsView.style.display = "block";
     formView.style.display = "none";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
     
     // Fill Details
     document.getElementById("detail-title").innerText = point.title;
-    
-    const isToilet = point.toiletType !== undefined;
-    
-    // Set titles/labels dynamically
-    document.getElementById("detail-desc-label").innerText = isToilet ? "公廁環境與停車描述" : "騎士回報詳情";
-    
-    if (isToilet) {
-        document.getElementById("detail-hazard-name").innerText = point.toiletTypeName;
-        document.getElementById("detail-hazard-name").className = "hazard-type-tag toilet-tag";
-        
-        // Show Toilet details card
-        document.getElementById("toilet-details-card").style.display = "block";
-        document.getElementById("detail-toilet-hours").innerText = point.hours;
-        
-        // Toilet attribute indicators
-        toggleIndicatorCard("detail-toilet-paper", point.hasPaper);
-        toggleIndicatorCard("detail-toilet-accessible", point.isAccessible);
-        toggleIndicatorCard("detail-toilet-parking", point.motorcycleFriendly);
-    } else {
-        document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
-        document.getElementById("detail-hazard-name").className = "hazard-type-tag";
-        
-        // Hide Toilet details card
-        document.getElementById("toilet-details-card").style.display = "none";
-    }
-    
     document.getElementById("detail-description").innerText = point.description;
     document.getElementById("detail-reporter").innerText = point.reporter;
     document.getElementById("detail-time").innerText = point.reportTime;
 
-    // Draw Stars
-    const starContainer = document.getElementById("detail-stars");
-    starContainer.innerHTML = "";
-    const ratingVal = isToilet ? point.cleanliness : point.dangerLevel;
-    
-    for (let i = 1; i <= 5; i++) {
-        const star = document.createElement("i");
-        star.className = i <= ratingVal ? "fas fa-star" : "far fa-star";
-        starContainer.appendChild(star);
+    // Handle Left Turn special specs
+    if (point.isLeftTurn) {
+        document.getElementById("detail-left-turn-specs").style.display = "block";
+        document.getElementById("metric-waiting-size").innerText = point.waitingAreaSize;
+        document.getElementById("metric-crowd-level").innerText = point.crowdLevel;
+        
+        const safetyContainer = document.getElementById("metric-safety-rating");
+        safetyContainer.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement("i");
+            star.className = i <= point.safetyRating ? "fas fa-star" : "far fa-star";
+            star.style.color = "var(--accent-cyan)";
+            star.style.fontSize = "0.75rem";
+            safetyContainer.appendChild(star);
+        }
+        
+        // Custom headers for two-stage left turn
+        document.getElementById("detail-hazard-name").innerText = "🔄 兩段式左轉提示";
+        document.getElementById("detail-hazard-name").style.color = "var(--accent-cyan)";
+        document.getElementById("detail-hazard-name").style.borderColor = "rgba(6, 182, 212, 0.4)";
+        document.getElementById("detail-hazard-name").style.background = "rgba(6, 182, 212, 0.15)";
+        
+        // Hide standard hazard stars in left turn mode
+        document.getElementById("detail-stars").style.display = "none";
+    } else {
+        document.getElementById("detail-left-turn-specs").style.display = "none";
+        
+        document.getElementById("detail-hazard-name").innerText = point.hazardTypeName;
+        document.getElementById("detail-hazard-name").style.color = "";
+        document.getElementById("detail-hazard-name").style.borderColor = "";
+        document.getElementById("detail-hazard-name").style.background = "";
+        
+        // Draw standard hazard Stars
+        document.getElementById("detail-stars").style.display = "flex";
+        const starContainer = document.getElementById("detail-stars");
+        starContainer.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement("i");
+            star.className = i <= point.dangerLevel ? "fas fa-star" : "far fa-star";
+            starContainer.appendChild(star);
+        }
     }
 
     // Load Votes
@@ -464,6 +509,8 @@ function openAddForm(lat, lng) {
     detailsView.style.display = "none";
     formView.style.display = "block";
     userSettingsView.style.display = "none";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
 
     // Fill form coords
     document.getElementById("form-lat-lng").innerText = `已選座標: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -745,6 +792,40 @@ function initUIEvents() {
         document.getElementById("sidebar-right").classList.remove("active");
     });
 
+    // Day/Night Theme Toggle
+    const themeBtn = document.getElementById("theme-toggle-btn");
+    themeBtn.addEventListener("click", () => {
+        if (currentTheme === 'dark') {
+            currentTheme = 'light';
+            document.documentElement.setAttribute('data-theme', 'light');
+            themeBtn.innerHTML = `<i class="fas fa-moon"></i> <span>🌙 夜間高感光</span>`;
+            setMapStyle('light');
+            showNotificationToast("☀️ 已切換至日間清晰地圖樣式");
+        } else {
+            currentTheme = 'dark';
+            document.documentElement.removeAttribute('data-theme');
+            themeBtn.innerHTML = `<i class="fas fa-sun"></i> <span>☀️ 日間清晰</span>`;
+            setMapStyle('dark');
+            showNotificationToast("🌙 已切換至夜間高感光地圖樣式");
+        }
+    });
+
+    // Checkboxes for toggling layers
+    const dangerCheckbox = document.getElementById("toggle-danger-layer");
+    const leftTurnCheckbox = document.getElementById("toggle-leftturn-layer");
+
+    dangerCheckbox.addEventListener("change", (e) => {
+        showDangerLayer = e.target.checked;
+        renderDangerPoints();
+        showNotificationToast(showDangerLayer ? "⚠️ 已顯示危險路段標記" : "⚠️ 已隱藏危險路段標記");
+    });
+
+    leftTurnCheckbox.addEventListener("change", (e) => {
+        showLeftTurnLayer = e.target.checked;
+        renderDangerPoints();
+        showNotificationToast(showLeftTurnLayer ? "🔄 已顯示兩段式左轉提示" : "🔄 已隱藏兩段式左轉提示");
+    });
+
     // List Drawer collapsible behaviour
     const drawer = document.getElementById("list-drawer");
     const drawerToggle = document.getElementById("drawer-toggle");
@@ -892,6 +973,11 @@ function openUserSettingsPanel() {
     detailsView.style.display = "none";
     formView.style.display = "none";
     userSettingsView.style.display = "block";
+    const facilityView = document.getElementById("sidebar-facility-view");
+    if (facilityView) facilityView.style.display = "none";
+
+    // Render favorites list
+    renderSettingsFavoritesList();
 
     sidebar.classList.add("active");
 }
@@ -901,26 +987,25 @@ function showModal(modalId) {
     document.getElementById(modalId).classList.add("active");
 }
 
+// Modal hide actions
 function hideModal(modalId) {
     document.getElementById(modalId).classList.remove("active");
 }
 
 // Filter markers based on search query
 function filterMarkersAndList(query) {
-    const activePoints = currentMode === 'danger' ? points : toiletPoints;
-
-    activePoints.forEach(point => {
-        let matches;
-        if (currentMode === 'danger') {
-            matches = point.title.toLowerCase().includes(query) || 
-                      point.description.toLowerCase().includes(query) ||
-                      point.hazardTypeName.toLowerCase().includes(query);
-        } else {
-            matches = point.title.toLowerCase().includes(query) || 
-                      point.description.toLowerCase().includes(query) ||
-                      point.toiletTypeName.toLowerCase().includes(query);
-        }
+    // Filter Danger points
+    points.forEach(point => {
+        const matches = showDangerLayer && (
+                        point.title.toLowerCase().includes(query) || 
+                        point.description.toLowerCase().includes(query) ||
+                        point.hazardTypeName.toLowerCase().includes(query));
         
+        // If in favorite tab, only show match if it is also in favorites!
+        if (currentDrawerTab === 'fav' && !favorites.includes(point.id)) {
+            matches = false;
+        }
+
         const marker = markers[point.id];
         if (marker) {
             if (matches) {
@@ -931,49 +1016,64 @@ function filterMarkersAndList(query) {
         }
     });
 
-    // Refresh Drawer list
-    const listContainer = document.getElementById("drawer-items-list");
-    let sortedPoints;
-    if (currentMode === 'danger') {
-        sortedPoints = [...activePoints].sort((a, b) => b.dangerLevel - a.dangerLevel);
-    } else {
-        sortedPoints = [...activePoints].sort((a, b) => b.cleanliness - a.cleanliness);
-    }
-    
-    listContainer.innerHTML = "";
-    sortedPoints.forEach(point => {
-        let matches;
-        if (currentMode === 'danger') {
-            matches = point.title.toLowerCase().includes(query) || 
-                      point.description.toLowerCase().includes(query) ||
-                      point.hazardTypeName.toLowerCase().includes(query);
-        } else {
-            matches = point.title.toLowerCase().includes(query) || 
-                      point.description.toLowerCase().includes(query) ||
-                      point.toiletTypeName.toLowerCase().includes(query);
+    // Filter Left Turn points
+    leftTurnPoints.forEach(point => {
+        const matches = showLeftTurnLayer && (
+                        point.title.toLowerCase().includes(query) || 
+                        point.description.toLowerCase().includes(query));
+        
+        const marker = leftTurnMarkers[point.id];
+        if (marker) {
+            if (matches) {
+                if (!map.hasLayer(marker)) marker.addTo(map);
+            } else {
+                if (map.hasLayer(marker)) map.removeLayer(marker);
+            }
         }
+    });
+
+    // Refresh Drawer list with matched items
+    const listContainer = document.getElementById("drawer-items-list");
+    listContainer.innerHTML = "";
+
+    let combined = [];
+    if (showDangerLayer) {
+        combined = [...combined, ...points];
+    }
+    if (showLeftTurnLayer) {
+        combined = [...combined, ...leftTurnPoints];
+    }
+
+    combined.sort((a, b) => b.dangerLevel - a.dangerLevel);
+
+    combined.forEach(point => {
+        const isLeft = point.isLeftTurn;
+        const matches = point.title.toLowerCase().includes(query) || 
+                        point.description.toLowerCase().includes(query) ||
+                        (!isLeft && point.hazardTypeName.toLowerCase().includes(query));
         
         if (!matches) return;
+        renderedCount++;
 
         const item = document.createElement("div");
         item.className = "drawer-item";
         
-        let metaBadge;
-        if (currentMode === 'danger') {
-            metaBadge = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
+        let badgeHtml = "";
+        if (isLeft) {
+            badgeHtml = `<span class="badge leftturn-badge">兩段式左轉</span>`;
         } else {
-            metaBadge = `<span class="badge toilet-tag">🚽 乾淨度 ${point.cleanliness}</span>`;
+            badgeHtml = `<span class="badge danger-${point.dangerLevel}">危險度 ${point.dangerLevel}</span>`;
         }
 
         item.innerHTML = `
             <div>
                 <div class="drawer-item-title">${point.title}</div>
                 <div class="drawer-item-meta">
-                    ${metaBadge}
+                    ${badgeHtml}
                     <span><i class="far fa-comment"></i> ${point.comments.length} 則留言</span>
                 </div>
             </div>
-            <div class="drawer-item-votes">
+            <div class="drawer-item-votes" style="color: ${isLeft ? 'var(--accent-cyan)' : 'var(--accent-blue)'}">
                 <i class="fas fa-thumbs-up"></i> ${point.upvotes}
             </div>
         `;
@@ -985,6 +1085,12 @@ function filterMarkersAndList(query) {
 
         listContainer.appendChild(item);
     });
+
+    if (renderedCount === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0; width: 100%;">
+            🔍 無符合條件的危險路段。
+        </div>`;
+    }
 }
 
 // Trigger floating cyber toasts notifications
@@ -1009,4 +1115,277 @@ function getCurrentDateTimeString() {
     const min = String(now.getMinutes()).padStart(2, '0');
     
     return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+// Toggle Favorite State
+function toggleFavorite(pointId) {
+    const index = favorites.indexOf(pointId);
+    let isAdded = false;
+    
+    if (index === -1) {
+        favorites.push(pointId);
+        isAdded = true;
+        showNotificationToast("💖 已加入收藏地點！");
+    } else {
+        favorites.splice(index, 1);
+        isAdded = false;
+        showNotificationToast("💔 已取消收藏");
+    }
+    
+    // Persist to localStorage
+    try {
+        localStorage.setItem("fcu_moto_favorites", JSON.stringify(favorites));
+    } catch (e) {
+        console.error("Failed to save favorites to localStorage", e);
+    }
+    
+    // Update Detail View Button if active
+    if (selectedPoint && selectedPoint.id === pointId) {
+        const favBtn = document.getElementById("favorite-toggle-btn");
+        if (favBtn) {
+            if (isAdded) {
+                favBtn.classList.add("active");
+                favBtn.innerHTML = `<i class="fas fa-heart"></i>`;
+            } else {
+                favBtn.classList.remove("active");
+                favBtn.innerHTML = `<i class="far fa-heart"></i>`;
+            }
+        }
+    }
+    
+    // Refresh Map markers to update icon color
+    renderDangerPoints();
+    
+    // Refresh lists
+    const query = document.getElementById("search-input").value.toLowerCase().trim();
+    if (query) {
+        filterMarkersAndList(query);
+    } else {
+        renderListView();
+    }
+    
+    // Refresh Settings Favorites View
+    renderSettingsFavoritesList();
+}
+
+// Render favorites inside the User Profile / Settings sidebar
+function settingsFavNavigate(lat, lng, point) {
+    map.panTo([lat, lng - 0.0015]);
+    showPointDetails(point);
+}
+
+function renderSettingsFavoritesList() {
+    const container = document.getElementById("settings-favorites-list");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    
+    const favPoints = points.filter(point => favorites.includes(point.id));
+    
+    favPoints.forEach(point => {
+        const card = document.createElement("div");
+        card.className = "fav-location-card";
+        
+        card.innerHTML = `
+            <div>
+                <div class="fav-location-card-title">${point.title}</div>
+                <div class="fav-location-card-meta">
+                    <span class="badge danger-${point.dangerLevel}">★ ${point.dangerLevel}</span>
+                    <span>${point.hazardTypeName}</span>
+                </div>
+            </div>
+            <div class="fav-location-card-action" title="取消收藏">
+                <i class="fas fa-heart-broken"></i>
+            </div>
+        `;
+        
+        // Clicking card pans map and shows details
+        card.addEventListener("click", (e) => {
+            // If clicking the heart-broken button, stop propagation and toggle
+            if (e.target.closest(".fav-location-card-action")) {
+                e.stopPropagation();
+                toggleFavorite(point.id);
+                return;
+            }
+            
+            settingsFavNavigate(point.lat, point.lng, point);
+        });
+        
+        container.appendChild(card);
+    });
+}
+
+// Create customized facility div icon
+function createFacilityIcon(type) {
+    if (type === 'gas') {
+        return L.divIcon({
+            className: 'facility-marker gas-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-gas-pump"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    } else if (type === 'parking') {
+        return L.divIcon({
+            className: 'facility-marker parking-marker',
+            html: `
+                <div class="facility-ring"></div>
+                <div class="facility-dot"><i class="fas fa-parking"></i></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+    }
+}
+
+// Render Gas Stations to Map
+function renderGasStations() {
+    gasLayerGroup.clearLayers();
+    if (!showGasStations) return;
+
+    mockGasStations.forEach(station => {
+        const marker = L.marker([station.lat, station.lng], {
+            icon: createFacilityIcon('gas')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-green); margin-right: 5px;"><i class="fas fa-gas-pump"></i></span> ${station.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(station);
+        });
+
+        marker.addTo(gasLayerGroup);
+    });
+}
+
+// Render Parking Lots to Map
+function renderParkingLots() {
+    parkingLayerGroup.clearLayers();
+    if (!showParkingLots) return;
+
+    mockParkingLots.forEach(lot => {
+        const marker = L.marker([lot.lat, lot.lng], {
+            icon: createFacilityIcon('parking')
+        });
+
+        marker.bindTooltip(`
+            <div style="background-color: var(--bg-secondary); color: white; border: 1px solid var(--glass-border); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                <span style="color: var(--accent-cyan); margin-right: 5px;"><i class="fas fa-parking"></i></span> ${lot.title}
+            </div>
+        `, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'custom-map-tooltip'
+        });
+
+        marker.on('click', () => {
+            showFacilityDetails(lot);
+        });
+
+        marker.addTo(parkingLayerGroup);
+    });
+}
+
+// Display Facility Details in Right Sidebar (VIEW 4)
+function showFacilityDetails(facility) {
+    selectedPoint = null; // Clear selected danger point
+    isAddingMode = false;
+    const onboardingToast = document.getElementById("onboarding-toast");
+    if (onboardingToast) onboardingToast.classList.remove("show");
+
+    const sidebar = document.getElementById("sidebar-right");
+    const detailsView = document.getElementById("sidebar-details-view");
+    const formView = document.getElementById("sidebar-form-view");
+    const userSettingsView = document.getElementById("sidebar-settings-view");
+    const facilityView = document.getElementById("sidebar-facility-view");
+
+    if (detailsView) detailsView.style.display = "none";
+    if (formView) formView.style.display = "none";
+    if (userSettingsView) userSettingsView.style.display = "none";
+    if (facilityView) facilityView.style.display = "block";
+
+    // Set fields
+    document.getElementById("facility-title").innerText = facility.title;
+    document.getElementById("facility-description").innerText = facility.description;
+
+    const typeNameEl = document.getElementById("facility-type-name");
+    const badgeEl = document.getElementById("facility-badge");
+    const extraEl = document.getElementById("facility-extra");
+    const servicesContainer = document.getElementById("facility-services");
+
+    if (servicesContainer) {
+        servicesContainer.innerHTML = "";
+    }
+
+    if (facility.type === 'gas') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "加油站";
+            typeNameEl.style.color = "var(--accent-green)";
+            typeNameEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
+            typeNameEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+        
+        if (badgeEl) {
+            badgeEl.innerText = facility.hours;
+            badgeEl.style.color = "var(--accent-green)";
+            badgeEl.style.borderColor = "rgba(16, 185, 129, 0.4)";
+            badgeEl.style.background = "rgba(16, 185, 129, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `品牌: ${facility.brand === 'CPC' ? '台灣中油' : '台塑石油'}`;
+
+        // Render services
+        if (servicesContainer) {
+            facility.services.forEach(service => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag";
+                chip.innerHTML = `<i class="fas fa-check-circle"></i> ${service}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    } else if (facility.type === 'parking') {
+        if (typeNameEl) {
+            typeNameEl.innerText = "機車停車場";
+            typeNameEl.style.color = "var(--accent-cyan)";
+            typeNameEl.style.borderColor = "rgba(6, 182, 212, 0.3)";
+            typeNameEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (badgeEl) {
+            badgeEl.innerText = facility.fee;
+            badgeEl.style.color = "var(--accent-cyan)";
+            badgeEl.style.borderColor = "rgba(6, 182, 212, 0.4)";
+            badgeEl.style.background = "rgba(6, 182, 212, 0.15)";
+        }
+
+        if (extraEl) extraEl.innerText = `車位數: ${facility.spaces}`;
+
+        // Render features
+        if (servicesContainer) {
+            facility.features.forEach(feature => {
+                const chip = document.createElement("span");
+                chip.className = "service-tag parking-tag";
+                chip.innerHTML = `<i class="fas fa-motorcycle"></i> ${feature}`;
+                servicesContainer.appendChild(chip);
+            });
+        }
+    }
+
+    // Open sidebar
+    if (sidebar) sidebar.classList.add("active");
+
+    // Center map slightly shifted to the left
+    map.panTo([facility.lat, facility.lng - 0.0015]);
 }
