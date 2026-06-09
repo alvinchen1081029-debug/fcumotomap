@@ -21,7 +21,7 @@ body {
     font-family: 'Outfit', 'Noto Sans TC', sans-serif;
     min-height: 100vh;
     display: flex;
-    flex-column: column;
+    flex-direction: column;
     overflow-x: hidden;
 }
 

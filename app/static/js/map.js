@@ -48,7 +48,7 @@ function initMap() {
 function fetchRoads() {
     // Collect Filter Values
     const searchVal = document.getElementById('searchRoad').value;
-    const trafficVal = document.querySelector('name=trafficLevel:checked')?.value || 'all';
+    const trafficVal = document.querySelector('input[name="trafficLevel"]:checked')?.value || 'all';
     
     // For safety, query checked input specifically
     const trafficRadios = document.getElementsByName('trafficLevel');
@@ -126,7 +126,7 @@ function drawRoads(roads) {
         });
 
         // Popup Content
-        const turnText = road.two_stage_turn === 1 
+        const turnText = road.two_stage_turn == 1 
             ? '<i class="bi bi-arrow-repeat text-danger"></i> 需要兩段式左轉 (待轉)' 
             : '<i class="bi bi-arrow-right text-success"></i> 無需待轉 (可直接左轉)';
 
@@ -196,16 +196,16 @@ function drawDangerMarkers(zones) {
         let starsHtml = '';
         for (let i = 0; i < 5; i++) {
             if (i < zone.rating) {
-                starsHtml += '<i class="bi bi-star-fill text-warning me-0.5"></i>';
+                starsHtml += '<i class="bi bi-star-fill text-warning"></i>';
             } else {
-                starsHtml += '<i class="bi bi-star text-warning me-0.5"></i>';
+                starsHtml += '<i class="bi bi-star text-warning"></i>';
             }
         }
 
         const popupContent = `
             <div style="min-width: 220px; font-family: 'Outfit', 'Noto Sans TC', sans-serif;">
-                <div class="fw-bold text-light mb-1 d-flex align-items-center">
-                    <i class="bi bi-exclamation-octagon-fill text-danger me-1.5"></i> ${zone.title}
+                <div class="fw-bold text-light mb-1 d-flex align-items-center gap-1">
+                    <i class="bi bi-exclamation-octagon-fill text-danger"></i> ${zone.title}
                 </div>
                 <div class="mb-2 text-warning small">
                     ${starsHtml} <span class="text-muted">(${zone.rating}星級)</span>
@@ -213,9 +213,9 @@ function drawDangerMarkers(zones) {
                 <div class="text-muted small mb-2 text-truncate-3">
                     ${zone.description}
                 </div>
-                <div class="d-flex justify-content-between text-muted small mb-3 border-top pt-2">
-                    <span><i class="bi bi-hand-thumbs-up-fill text-success"></i> ${zone.upvotes}</span>
-                    <span><i class="bi bi-hand-thumbs-down-fill text-danger"></i> ${zone.downvotes}</span>
+                <div class="d-flex justify-content-between text-light-custom small mb-3 border-top pt-2">
+                    <span><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> ${zone.upvotes}</span>
+                    <span><i class="bi bi-hand-thumbs-down-fill text-danger me-1"></i> ${zone.downvotes}</span>
                 </div>
                 <a href="/danger-zones/${zone.id}" class="btn btn-primary btn-sm rounded-pill text-white w-100 font-outfit" style="font-size: 0.75rem;">
                     查看討論與投票 <i class="bi bi-chat-fill ms-1"></i>
