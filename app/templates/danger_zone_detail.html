@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Back Button -->
+    <div class="mb-4">
+        <a href="{{ url_for('main.danger_zones_list') }}" class="btn btn-link text-muted p-0 d-inline-flex align-items-center hover-translate-x-left">
+            <i class="bi bi-arrow-left me-1 fs-5"></i> 回到危險路段列表
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Danger Zone Detail Info -->
+        <div class="col-lg-6">
+            <div class="card bg-glass border-glass p-4 h-100 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-danger px-3 py-2 rounded-pill fs-7 fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> 危險路段回報
+                    </span>
+                    <span class="text-muted small font-outfit">
+                        <i class="bi bi-calendar-event me-1"></i> 回報時間：{{ zone.created_at }}
+                    </span>
+                </div>
+
+                <h2 class="fw-bold text-light mb-3">{{ zone.title }}</h2>
+
+                <!-- Rating -->
+                <div class="mb-4 d-flex align-items-center">
+                    <span class="text-muted me-3">危險指數：</span>
+                    <div class="text-warning fs-4 me-2">
+                        {% for i in range(5) %}
+                            {% if i < zone.rating %}
+                                <i class="bi bi-star-fill"></i>
+                            {% else %}
+                                <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="badge bg-glass-dark text-warning border border-warning px-2.5 py-1 rounded font-outfit">{{ zone.rating }} / 5</span>
+                </div>
+
+                <!-- Coordinates Map Link -->
+                <div class="p-3 mb-4 rounded bg-glass-dark border border-muted-custom">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="small text-muted"><i class="bi bi-geo-alt-fill text-primary"></i> 經緯度座標 (WGS84)</div>
+                            <div class="font-outfit text-light small">{{ zone.latitude }}, {{ zone.longitude }}</div>
+                        </div>
+                        <a href="{{ url_for('main.index') }}?lat={{ zone.latitude }}&lng={{ zone.longitude }}" class="btn btn-outline-light btn-sm rounded-pill">
+                            <i class="bi bi-map me-1"></i> 在地圖查看
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4 flex-grow-1">
+                    <h6 class="fw-bold text-light mb-2"><i class="bi bi-file-text me-1 text-primary"></i> 回報詳細描述：</h6>
+                    <div class="p-3 rounded bg-dark-subtle text-light-custom" style="white-space: pre-wrap; line-height: 1.6;">{{ zone.description }}</div>
+                </div>
+
+                <!-- Voting Section -->
+                <div class="pt-4 border-top border-muted-custom">
+                    <h6 class="fw-bold text-light mb-3 text-center"><i class="bi bi-question-circle me-1 text-primary"></i> 您認同此項危險警示嗎？</h6>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button id="btnUpvote" class="btn btn-outline-success rounded-pill px-4 py-2 d-flex align-items-center gap-2" onclick="castVote('upvote')">
+                            <i class="bi bi-hand-thumbs-up-fill fs-5"></i> 贊同
+                            <span id="upvotesCount" class="badge bg-success font-outfit">{{ zone.upvotes }}</span>
+                        </button>
+                        <button id="btnDownvote" class="btn btn-outline-danger rounded-pill px-4 py-2 d-flex align-items-center gap-2" onclick="castVote('downvote')">
+                            <i class="bi bi-hand-thumbs-down-fill fs-5"></i> 反對
+                            <span id="downvotesCount" class="badge bg-danger font-outfit">{{ zone.downvotes }}</span>
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small id="voteStatus" class="text-success" style="display:none;"><i class="bi bi-check-circle"></i> 投票成功！</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Comment Board -->
+        <div class="col-lg-6">
+            <div class="card bg-glass border-glass p-4 h-100 shadow-sm d-flex flex-column">
+                <h4 class="fw-bold text-light mb-3">
+                    <i class="bi bi-chat-left-dots-fill text-primary me-2"></i> 機車騎士討論留言板
+                </h4>
+                <p class="text-muted small">請針對此危險路段發表評論或提供最新的路況回饋（如施工已結束、違停已清除等）。</p>
+
+                <hr class="my-3 text-muted">
+
+                <!-- Comments List -->
+                <div class="comments-list flex-grow-1 overflow-auto pe-2 mb-4" style="max-height: 350px;">
+                    {% if comments %}
+                        {% for comment in comments %}
+                            <div class="comment-item p-3 mb-3 rounded bg-glass-dark border-left-primary">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-primary small d-flex align-items-center">
+                                        <i class="bi bi-person-circle me-1.5 fs-6"></i> {{ comment.author }}
+                                    </span>
+                                    <span class="text-muted small font-outfit">
+                                        <i class="bi bi-clock me-1"></i> {{ comment.created_at }}
+                                    </span>
+                                </div>
+                                <div class="text-light-custom small" style="white-space: pre-wrap;">{{ comment.content }}</div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted empty-comments">
+                            <i class="bi bi-chat-quote fs-1 mb-2"></i>
+                            <p class="mb-0">目前尚無留言，快來發表您的看法吧！</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Add Comment Form -->
+                <div class="mt-auto pt-3 border-top border-muted-custom">
+                    <h5 class="fw-bold text-light mb-3 small"><i class="bi bi-pencil-fill text-primary me-1"></i> 發表新留言</h5>
+                    <form action="{{ url_for('main.add_comment', id=zone.id) }}" method="POST">
+                        <div class="mb-3">
+                            <input type="text" name="author" class="form-control border-0 bg-dark-subtle text-light" placeholder="您的暱稱（留空則為匿名騎士）" maxlength="50">
+                        </div>
+                        <div class="mb-3">
+                            <textarea name="content" class="form-control border-0 bg-dark-subtle text-light" rows="3" placeholder="請輸入留言內容..." required maxlength="500"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary rounded-pill py-2">
+                                <i class="bi bi-chat-right-text-fill me-1"></i> 送出留言
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handles AJAX voting
+    function castVote(type) {
+        const btnUp = document.getElementById('btnUpvote');
+        const btnDown = document.getElementById('btnDownvote');
+        const voteStatus = document.getElementById('voteStatus');
+        
+        // Disable buttons during submission to prevent double tap
+        btnUp.disabled = true;
+        btnDown.disabled = true;
+
+        fetch('/api/danger-zones/{{ zone.id }}/vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type: type })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('網路錯誤或點位不存在');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Update text values
+                document.getElementById('upvotesCount').textContent = data.upvotes;
+                document.getElementById('downvotesCount').textContent = data.downvotes;
+                
+                // Show floating check
+                voteStatus.style.display = 'block';
+                setTimeout(() => {
+                    voteStatus.style.display = 'none';
+                }, 3000);
+            }
+        })
+        .catch(err => {
+            alert('投票失敗: ' + err.message);
+        })
+        .finally(() => {
+            btnUp.disabled = false;
+            btnDown.disabled = false;
+        });
+    }
+</script>
+{% endblock %}

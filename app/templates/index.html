@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<!-- Leaflet.js CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<!-- Leaflet.js Script -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+    /* Ensure index page takes full available space under navbar */
+    html, body {
+        height: 100%;
+        overflow: hidden;
+    }
+    .main-content {
+        height: calc(100vh - 65px - 40px); /* Height minus navbar and footer */
+        display: flex;
+        overflow: hidden;
+    }
+    .main-footer {
+        height: 40px;
+        padding: 8px 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100 p-0 d-flex flex-column flex-md-row">
+    <!-- Sidebar Control Panel -->
+    <div class="sidebar-panel p-4 d-flex flex-column bg-glass shadow-lg">
+        <h4 class="mb-3 d-flex align-items-center fw-bold">
+            <i class="bi bi-sliders text-primary me-2"></i> 機車友善查詢面板
+        </h4>
+        <p class="text-muted small">查詢逢甲學區周邊機車道車流量與待轉資訊，地圖上按右鍵即可新增危險標記。</p>
+        
+        <hr class="my-2 text-muted">
+
+        <!-- Search Form -->
+        <div class="mb-3">
+            <label class="form-label fw-bold text-light small">搜尋路段名稱</label>
+            <div class="input-group">
+                <span class="input-group-text bg-dark-subtle border-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchRoad" class="form-control border-0 bg-dark-subtle text-light" placeholder="輸入路名，例如：福星路">
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="mb-3">
+            <label class="form-label fw-bold text-light small">車流量狀態篩選</label>
+            <div class="d-flex flex-column gap-2">
+                <div class="form-check custom-radio-btn">
+                    <input class="form-check-input" type="radio" name="trafficLevel" id="trafficAll" value="all" checked>
+                    <label class="form-check-label d-flex align-items-center" for="trafficAll">
+                        <span class="traffic-dot dot-all me-2"></span> 全部路段
+                    </label>
+                </div>
+                <div class="form-check custom-radio-btn">
+                    <input class="form-check-input" type="radio" name="trafficLevel" id="trafficLow" value="low">
+                    <label class="form-check-label d-flex align-items-center" for="trafficLow">
+                        <span class="traffic-dot dot-low me-2"></span> 順暢 (綠色)
+                    </label>
+                </div>
+                <div class="form-check custom-radio-btn">
+                    <input class="form-check-input" type="radio" name="trafficLevel" id="trafficMed" value="medium">
+                    <label class="form-check-label d-flex align-items-center" for="trafficMed">
+                        <span class="traffic-dot dot-medium me-2"></span> 壅塞 (黃色)
+                    </label>
+                </div>
+                <div class="form-check custom-radio-btn">
+                    <input class="form-check-input" type="radio" name="trafficLevel" id="trafficHigh" value="high">
+                    <label class="form-check-label d-flex align-items-center" for="trafficHigh">
+                        <span class="traffic-dot dot-high me-2"></span> 紫爆 (紅色)
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-bold text-light small">待轉規則篩選</label>
+            <select id="twoStageTurn" class="form-select border-0 bg-dark-subtle text-light">
+                <option value="">全部規則</option>
+                <option value="1">需要兩段式左轉 🔄</option>
+                <option value="0">直接左轉即可 ➡️</option>
+            </select>
+        </div>
+
+        <div class="mb-4 d-grid">
+            <button id="resetFilters" class="btn btn-outline-secondary btn-sm rounded-pill py-2">
+                <i class="bi bi-x-circle me-1"></i> 重設篩選條件
+            </button>
+        </div>
+
+        <!-- Legend / Info Panel -->
+        <div class="mt-auto legend-card p-3 rounded bg-glass-dark">
+            <h6 class="fw-bold mb-2 text-primary small"><i class="bi bi-info-circle me-1"></i> 圖例說明</h6>
+            <div class="d-flex flex-column gap-2 small text-muted">
+                <div class="d-flex align-items-center">
+                    <span class="traffic-line-indicator line-low me-2"></span>
+                    <span>順暢機車道 (綠線)</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="traffic-line-indicator line-medium me-2"></span>
+                    <span>壅塞機車道 (黃線)</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="traffic-line-indicator line-high me-2"></span>
+                    <span>紫爆機車道 (紅線)</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill text-danger me-2 fs-6"></i>
+                    <span>危險回報路段 (紅標記)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div class="map-container flex-grow-1 position-relative">
+        <div id="map" class="h-100 w-100"></div>
+        
+        <!-- Instruction Banner on Map -->
+        <div class="map-overlay-tip d-none d-md-block shadow-sm">
+            <i class="bi bi-mouse-fill me-1 text-primary"></i> <strong>提示</strong>：在地圖上按<strong>滑鼠右鍵</strong>，即可回報該處的危險路段。
+        </div>
+    </div>
+</div>
+
+<!-- Report Danger Zone Modal -->
+<div class="modal fade custom-modal" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-glass border-glass shadow-2xl">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-light d-flex align-items-center" id="reportModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger me-2 animate-pulse"></i> 回報危險路段
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div class="alert alert-dark bg-glass-dark border-0 text-muted small mb-3">
+                    <i class="bi bi-geo-alt-fill text-primary"></i> 座標點位：
+                    <span id="displayCoords" class="font-outfit text-light">0.00000, 0.00000</span>
+                </div>
+                <form id="reportForm">
+                    <input type="hidden" id="reportLat" name="latitude">
+                    <input type="hidden" id="reportLng" name="longitude">
+                    
+                    <div class="mb-3">
+                        <label for="reportTitle" class="form-label fw-semibold small text-light">危險標題 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control border-0 bg-dark-subtle text-light" id="reportTitle" required placeholder="如：福星文華路口盲區違停">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reportDesc" class="form-label fw-semibold small text-light">詳細描述 <span class="text-danger">*</span></label>
+                        <textarea class="form-control border-0 bg-dark-subtle text-light" id="reportDesc" rows="3" required placeholder="請詳細說明該路段或路口有何危險（如：積水、打滑、車速過快、視線死角等）"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-light">危險星級 <span class="text-danger">*</span></label>
+                        <div class="rating-select d-flex gap-2">
+                            <input type="radio" name="rating" id="star5" value="5" class="d-none">
+                            <label for="star5" class="star-btn"><i class="bi bi-star"></i> 5 (極度危險)</label>
+                            
+                            <input type="radio" name="rating" id="star4" value="4" class="d-none">
+                            <label for="star4" class="star-btn"><i class="bi bi-star"></i> 4</label>
+                            
+                            <input type="radio" name="rating" id="star3" value="3" class="d-none" checked>
+                            <label for="star3" class="star-btn active"><i class="bi bi-star-fill"></i> 3</label>
+                            
+                            <input type="radio" name="rating" id="star2" value="2" class="d-none">
+                            <label for="star2" class="star-btn"><i class="bi bi-star"></i> 2</label>
+                            
+                            <input type="radio" name="rating" id="star1" value="1" class="d-none">
+                            <label for="star1" class="star-btn"><i class="bi bi-star"></i> 1 (輕微提醒)</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">取消</button>
+                <button type="button" id="submitReportBtn" class="btn btn-primary rounded-pill px-4">
+                    <i class="bi bi-send-fill me-1"></i> 送出回報
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Custom Map Logic Script -->
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}
