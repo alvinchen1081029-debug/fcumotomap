@@ -45,3 +45,14 @@ CREATE TABLE IF NOT EXISTS pois (
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Database schema for fcumotomap
+CREATE TABLE IF NOT EXISTS intersections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    requires_two_stage INTEGER NOT NULL DEFAULT 1, -- 1: 需兩段式左轉, 0: 免兩段式左轉
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

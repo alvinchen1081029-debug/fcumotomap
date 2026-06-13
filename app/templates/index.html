@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Fullscreen/Dashboard Layout */
+    .dashboard-container {
+        display: flex;
+        height: calc(100vh - 69px); /* Subtract navbar height */
+        overflow: hidden;
+    }
+
+    /* Sidebar Styling */
+    .sidebar-panel {
+        width: 380px;
+        background: rgba(15, 23, 42, 0.95);
+        border-right: 1px solid var(--border-glow);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-glow);
+    }
+
+    .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    /* Map Styling */
+    .map-container {
+        flex: 1;
+        height: 100%;
+        position: relative;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        background-color: #0b0f19;
+    }
+
+    /* Custom Input and Cards */
+    .glass-card {
+        background: rgba(30, 41, 59, 0.45);
+        border: 1px solid var(--border-glow);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 15px;
+        transition: all 0.25s ease;
+        cursor: pointer;
+    }
+
+    .glass-card:hover {
+        background: rgba(30, 41, 59, 0.7);
+        border-color: var(--primary-glow);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .glass-card.active {
+        background: rgba(56, 189, 248, 0.1);
+        border-color: var(--primary-glow);
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+    }
+
+    .search-box {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid var(--border-glow);
+        color: var(--text-main);
+        border-radius: 10px;
+        padding: 10px 15px;
+        transition: all 0.3s;
+    }
+
+    .search-box:focus {
+        background: rgba(30, 41, 59, 0.85);
+        border-color: var(--primary-glow);
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+        color: var(--text-main);
+    }
+
+    .form-control-custom {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border-glow);
+        color: var(--text-main);
+        border-radius: 8px;
+    }
+
+    .form-control-custom:focus {
+        background: rgba(15, 23, 42, 0.9);
+        border-color: var(--primary-glow);
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        color: var(--text-main);
+    }
+
+    .form-label-custom {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin-bottom: 5px;
+    }
+
+    /* Custom Leaflet Marker Icons with Neon Glow Pulse */
+    .custom-marker {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        border: 2px solid white;
+    }
+
+    .marker-two-stage {
+        background-color: var(--accent-two-stage);
+        box-shadow: 0 0 15px var(--accent-two-stage);
+        animation: pulse-orange 2s infinite;
+    }
+
+    .marker-direct {
+        background-color: var(--accent-direct);
+        box-shadow: 0 0 15px var(--accent-direct);
+        animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-orange {
+        0% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(251, 146, 60, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0); }
+    }
+
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    }
+
+    /* Leaflet Popup Premium Theme */
+    .leaflet-popup-content-wrapper {
+        background: rgba(15, 23, 42, 0.95) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-glow) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(8px);
+    }
+
+    .leaflet-popup-tip {
+        background: rgba(15, 23, 42, 0.95) !important;
+        border: 1px solid var(--border-glow) !important;
+    }
+
+    /* Quick Badge Rules */
+    .badge-two-stage {
+        background: rgba(251, 146, 60, 0.15);
+        color: var(--accent-two-stage);
+        border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .badge-direct {
+        background: rgba(74, 222, 128, 0.15);
+        color: var(--accent-direct);
+        border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    /* Form Mode Indicator */
+    .click-hint {
+        font-size: 0.8rem;
+        background: rgba(56, 189, 248, 0.1);
+        color: var(--primary-glow);
+        border: 1px dashed rgba(56, 189, 248, 0.3);
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Custom Scrollbars in panels */
+    .sidebar-content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    .sidebar-content::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Leaflet Map controls customization */
+    .leaflet-control-zoom a {
+        background-color: rgba(30, 41, 59, 0.9) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-glow) !important;
+    }
+    .leaflet-control-zoom a:hover {
+        background-color: var(--primary-glow) !important;
+        color: var(--bg-dark) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    
+    <!-- Sidebar: Search & Intersections List & Reporting Form -->
+    <div class="sidebar-panel">
+        
+        <!-- Tab Navigation to switch between List and Report -->
+        <div class="sidebar-header">
+            <ul class="nav nav-pills nav-fill" id="sidebarTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active py-2 btn-sm rounded-pill" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-tab-pane" type="button" role="tab" aria-controls="list-tab-pane" aria-selected="true">
+                        <i class="fa-solid fa-list-ul me-1"></i>路口列表
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-2 btn-sm rounded-pill" id="report-tab" data-bs-toggle="tab" data-bs-target="#report-tab-pane" type="button" role="tab" aria-controls="report-tab-pane" aria-selected="false">
+                        <i class="fa-solid fa-map-pin me-1"></i>回報路口
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="sidebar-content tab-content" id="sidebarTabsContent">
+            
+            <!-- LIST TAB -->
+            <div class="tab-pane fade show active" id="list-tab-pane" role="tabpanel" aria-labelledby="list-tab" tabindex="0">
+                <!-- Search Box -->
+                <div class="mb-4 position-relative">
+                    <input type="text" id="intersectionSearch" class="form-control search-box w-100" placeholder="搜尋路口名稱... (例如: 逢甲路)">
+                    <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="right: 15px; top: 13px;"></i>
+                </div>
+                
+                <div id="noResults" class="text-center text-muted my-5 d-none">
+                    <i class="fa-regular fa-map-marker-question fa-3x mb-3"></i>
+                    <p>找不到符合條件的路口</p>
+                </div>
+                
+                <!-- Intersections List -->
+                <div id="intersectionsList">
+                    {% for intersection in intersections %}
+                    <div class="glass-card" 
+                         id="card-{{ intersection.id }}" 
+                         data-id="{{ intersection.id }}"
+                         data-name="{{ intersection.name }}"
+                         data-lat="{{ intersection.latitude }}"
+                         data-lng="{{ intersection.longitude }}"
+                         onclick="focusIntersection({{ intersection.id }}, {{ intersection.latitude }}, {{ intersection.longitude }})">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="m-0 fs-6 text-white">{{ intersection.name }}</h5>
+                            {% if intersection.requires_two_stage == 1 %}
+                                <span class="badge badge-two-stage rounded-pill px-2 py-1 fs-7">
+                                    <i class="fa-solid fa-arrow-turn-up fa-rotate-90 me-1"></i>兩段式左轉
+                                </span>
+                            {% else %}
+                                <span class="badge badge-direct rounded-pill px-2 py-1 fs-7">
+                                    <i class="fa-solid fa-arrow-turn-up me-1"></i>直接左轉
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted fs-7 mb-2 text-truncate-2">{{ intersection.description or '無詳細規則說明。' }}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="fs-8 text-secondary">
+                                <i class="fa-solid fa-compass me-1"></i>{{ "%.4f"|format(intersection.latitude) }}, {{ "%.4f"|format(intersection.longitude) }}
+                            </span>
+                            <button class="btn btn-sm btn-outline-danger border-0 p-1 fs-8" 
+                                    onclick="event.stopPropagation(); deleteIntersectionRule({{ intersection.id }}, '{{ intersection.name }}')">
+                                <i class="fa-solid fa-trash-can"></i> 刪除
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- REPORT TAB -->
+            <div class="tab-pane fade" id="report-tab-pane" role="tabpanel" aria-labelledby="report-tab" tabindex="0">
+                <div class="click-hint">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>在地圖上點擊以自動帶入路口座標</span>
+                </div>
+                
+                <form id="reportForm" onsubmit="submitReport(event)">
+                    <div class="mb-3">
+                        <label class="form-label-custom">路口名稱 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-custom" id="formName" required placeholder="如：福星路與河南路口">
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label-custom">緯度 (Latitude) <span class="text-danger">*</span></label>
+                            <input type="number" step="any" class="form-control form-control-custom" id="formLat" required readonly placeholder="點擊地圖取得">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label-custom">經度 (Longitude) <span class="text-danger">*</span></label>
+                            <input type="number" step="any" class="form-control form-control-custom" id="formLng" required readonly placeholder="點擊地圖取得">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label-custom">是否需要兩段式左轉？ <span class="text-danger">*</span></label>
+                        <div class="d-flex gap-3 mt-1">
+                            <div class="form-check flex-fill">
+                                <input class="form-check-input" type="radio" name="requires_two_stage" id="twoStageYes" value="1" checked>
+                                <label class="form-check-label text-white fs-7" for="twoStageYes">
+                                    <span class="badge badge-two-stage rounded-pill px-2">需兩段式左轉</span>
+                                </label>
+                            </div>
+                            <div class="form-check flex-fill">
+                                <input class="form-check-input" type="radio" name="requires_two_stage" id="twoStageNo" value="0">
+                                <label class="form-check-label text-white fs-7" for="twoStageNo">
+                                    <span class="badge badge-direct rounded-pill px-2">免兩段式左轉</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label-custom">詳細規則說明 (Optional)</label>
+                        <textarea class="form-control form-control-custom" id="formDescription" rows="4" placeholder="例如：福星路西向東需兩段式左轉，待轉區容量大。"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-info w-100 py-2 rounded-3 text-white fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>送出路口規則</span>
+                    </button>
+                </form>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Map Container -->
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global state
+    let map;
+    let markers = {};
+    let activeCard = null;
+    let clickMarker = null;
+
+    // Initialize Leaflet Map centered at Feng Chia University (逢甲大學)
+    document.addEventListener("DOMContentLoaded", function () {
+        map = L.map('map', {
+            zoomControl: false // Positioned customly later or handled standardly
+        }).setView([24.1786, 120.6466], 15); // Zoom level 15
+
+        // Add standard zoom control to top-right
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        // Load premium dark-theme tile layer from CartoDB (perfect match for dark UI)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Load all intersections to the map
+        loadMapMarkers();
+
+        // Setup Map Click Listener for Reporting
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            // Auto fill coordinates
+            document.getElementById('formLat').value = lat.toFixed(6);
+            document.getElementById('formLng').value = lng.toFixed(6);
+
+            // Switch to Report Tab
+            const reportTabTrigger = document.querySelector('#report-tab');
+            const tab = new bootstrap.Tab(reportTabTrigger);
+            tab.show();
+
+            // Set temporary click marker on map
+            if (clickMarker) {
+                map.removeLayer(clickMarker);
+            }
+            clickMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    html: '<i class="fa-solid fa-location-crosshairs fa-2x text-info"></i>',
+                    className: 'temp-marker-icon',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                })
+            }).addTo(map);
+            
+            // Pan to the clicked spot smoothly
+            map.panTo([lat, lng]);
+        });
+
+        // Setup Live Search filter
+        document.getElementById('intersectionSearch').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            let hasResults = false;
+            
+            document.querySelectorAll('.glass-card').forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                if (name.includes(query)) {
+                    card.classList.remove('d-none');
+                    hasResults = true;
+                    // Show corresponding marker
+                    const id = card.getAttribute('data-id');
+                    if (markers[id]) {
+                        map.addLayer(markers[id]);
+                    }
+                } else {
+                    card.classList.add('d-none');
+                    // Hide corresponding marker
+                    const id = card.getAttribute('data-id');
+                    if (markers[id]) {
+                        map.removeLayer(markers[id]);
+                    }
+                }
+            });
+
+            const noResultsElement = document.getElementById('noResults');
+            if (hasResults) {
+                noResultsElement.classList.add('d-none');
+            } else {
+                noResultsElement.classList.remove('d-none');
+            }
+        });
+    });
+
+    // Load and render all markers on the map
+    function loadMapMarkers() {
+        // Clear any existing markers
+        for (let key in markers) {
+            map.removeLayer(markers[key]);
+        }
+        markers = {};
+
+        // Parse through list items
+        document.querySelectorAll('.glass-card').forEach(card => {
+            const id = card.getAttribute('data-id');
+            const name = card.getAttribute('data-name');
+            const lat = parseFloat(card.getAttribute('data-lat'));
+            const lng = parseFloat(card.getAttribute('data-lng'));
+            
+            // Check if two-stage badge or direct
+            const isTwoStage = card.innerHTML.includes('兩段式左轉');
+            
+            // Create glowing HTML div icon
+            const customIcon = L.divIcon({
+                className: `custom-marker ${isTwoStage ? 'marker-two-stage' : 'marker-direct'}`,
+                html: isTwoStage ? '待' : '直',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            // Create popup HTML
+            const popupContent = `
+                <div style="font-family: 'Noto Sans TC', sans-serif; padding: 5px; min-width: 200px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                        <strong style="color: #fff; font-size: 0.95rem;">${name}</strong>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <span class="badge ${isTwoStage ? 'badge-two-stage' : 'badge-direct'}" style="font-size: 0.8rem; padding: 4px 8px; border-radius: 6px;">
+                            ${isTwoStage ? '<i class="fa-solid fa-arrow-turn-up fa-rotate-90 me-1"></i>兩段式左轉' : '<i class="fa-solid fa-arrow-turn-up me-1"></i>直接左轉'}
+                        </span>
+                    </div>
+                    <p style="color: #cbd5e1; font-size: 0.8rem; line-height: 1.4; margin: 0 0 10px 0;">
+                        ${card.querySelector('p').innerText}
+                    </p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #64748b; font-size: 0.75rem;">ID: #${id}</span>
+                        <button onclick="deleteIntersectionRule(${id}, '${name}')" style="background: none; border: none; color: #f87171; font-size: 0.8rem; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-trash-can"></i> 刪除
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Create Marker
+            const marker = L.marker([lat, lng], { icon: customIcon })
+                .bindPopup(popupContent);
+            
+            // Popup Open Event to highlight card
+            marker.on('popupopen', function() {
+                highlightCard(id);
+                // Pan map slightly to accommodate popup
+                map.panTo([lat, lng]);
+            });
+
+            marker.on('popupclose', function() {
+                unhighlightCard();
+            });
+
+            marker.addTo(map);
+            markers[id] = marker;
+        });
+    }
+
+    // Highlight card in sidebar when marker is clicked
+    function highlightCard(id) {
+        unhighlightCard();
+        const card = document.getElementById(`card-${id}`);
+        if (card) {
+            card.classList.add('active');
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            activeCard = card;
+        }
+    }
+
+    // Unhighlight active card
+    function unhighlightCard() {
+        if (activeCard) {
+            activeCard.classList.remove('active');
+            activeCard = null;
+        }
+    }
+
+    // Programmatically focus/zoom in on an intersection when clicked in sidebar
+    function focusIntersection(id, lat, lng) {
+        // Open the tab/marker popup
+        if (markers[id]) {
+            markers[id].openPopup();
+        }
+        map.setView([lat, lng], 17); // Close-up view zoom level 17
+    }
+
+    // Handle AJAX report submission
+    function submitReport(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('formName').value;
+        const latitude = document.getElementById('formLat').value;
+        const longitude = document.getElementById('formLng').value;
+        const requires_two_stage = document.querySelector('input[name="requires_two_stage"]:checked').value;
+        const description = document.getElementById('formDescription').value;
+
+        fetch('/api/intersections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name,
+                latitude,
+                longitude,
+                requires_two_stage,
+                description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Clear Form
+                document.getElementById('reportForm').reset();
+                document.getElementById('formLat').value = '';
+                document.getElementById('formLng').value = '';
+
+                // Remove temporary click marker
+                if (clickMarker) {
+                    map.removeLayer(clickMarker);
+                    clickMarker = null;
+                }
+
+                // Add card and reload markers dynamically instead of full page refresh
+                // Fetch latest HTML representation, or simple page reload to render templating correctly.
+                // A quick reload makes it easiest and cleanest to ensure order, or we can refresh just the list via API.
+                // To keep user experience modern, let's reload the page.
+                window.location.reload();
+            } else {
+                alert('錯誤: ' + (data.error || '回報失敗，請重試！'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('送出時發生錯誤，請檢查伺服器連線！');
+        });
+    }
+
+    // Delete intersection rule
+    function deleteIntersectionRule(id, name) {
+        if (confirm(`確定要刪除「${name}」的路口提示規則嗎？`)) {
+            fetch(`/api/intersections/${id}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove marker
+                    if (markers[id]) {
+                        map.removeLayer(markers[id]);
+                        delete markers[id];
+                    }
+                    
+                    // Remove card
+                    const card = document.getElementById(`card-${id}`);
+                    if (card) {
+                        card.remove();
+                    }
+
+                    // Show Toast or message
+                    alert('路口規則已成功刪除！');
+                } else {
+                    alert('錯誤: ' + (data.error || '刪除失敗！'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('刪除時發生錯誤！');
+            });
+        }
+    }
+</script>
+{% endblock %}
