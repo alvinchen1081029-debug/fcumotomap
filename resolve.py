@@ -1,3 +1,36 @@
+import os
+
+def write_file(path, content):
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content.strip() + '\n')
+
+# requirements.txt
+write_file('requirements.txt', '''
+Flask==3.0.3
+python-dotenv==1.0.1
+''')
+
+# app.py
+write_file('app.py', '''
+import os
+from app import create_app, init_db
+
+app = create_app()
+
+if __name__ == '__main__':
+    if not os.path.exists(app.config['DATABASE']):
+        with app.app_context():
+            init_db()
+    app.run(debug=True, port=5000)
+''')
+
+# app/routes/__init__.py
+write_file('app/routes/__init__.py', '''
+# app.routes package
+''')
+
+# database/schema.sql
+write_file('database/schema.sql', '''
 -- Enable foreign key support
 PRAGMA foreign_keys = ON;
 
@@ -24,8 +57,7 @@ CREATE TABLE IF NOT EXISTS danger_zones (
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
-<<<<<<< HEAD
--- Database schema for fcumotomap
+-- Database schema for fcumotomap intersections
 CREATE TABLE IF NOT EXISTS intersections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -35,7 +67,7 @@ CREATE TABLE IF NOT EXISTS intersections (
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-=======
+
 -- Create comments table
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,4 +106,4 @@ INSERT INTO comments (id, danger_zone_id, author, content, created_at) VALUES
 (4, 2, '逢甲大一新生', '公車靠站時完全把機車道擋住，只能切到左側汽車道，好幾次差點被後車追撞...', '2026-06-01 16:22:00'),
 (5, 3, 'FCU騎士', '待轉區真的很小，每次都停到斑馬線上，行人都在看我們。', '2026-06-02 09:10:00'),
 (6, 3, '機車即正義', '其實這個路口應該直接開放機車左轉，強迫待轉反而更危險。', '2026-06-02 10:05:00');
->>>>>>> origin/main
+''')
