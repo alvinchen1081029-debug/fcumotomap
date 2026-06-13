@@ -38,10 +38,25 @@ def create_app():
             db.close()
 
     # Import and register blueprints
-    from app.routes.main import main_bp
-    from app.routes.api import api_bp
-    app.register_blueprint(main_bp)
-    app.register_blueprint(api_bp)
+    try:
+        from app.routes.main import main_bp
+        app.register_blueprint(main_bp)
+    except ImportError:
+        pass
+        
+    try:
+        from app.routes.api import api_bp
+        app.register_blueprint(api_bp)
+    except ImportError:
+        pass
+
+    try:
+        from app.routes.routes import main_bp as intersections_bp
+        if 'main' in app.blueprints:
+            intersections_bp.name = 'intersections_bp'
+        app.register_blueprint(intersections_bp)
+    except ImportError:
+        pass
 
     return app
 
@@ -49,7 +64,13 @@ def init_db():
     db_path = os.path.join('instance', 'database.db')
     os.makedirs('instance', exist_ok=True)
     conn = sqlite3.connect(db_path)
+    # Enable foreign keys
+    conn.execute("PRAGMA foreign_keys = ON;")
+    
     schema_path = os.path.join('database', 'schema.sql')
+    if not os.path.exists(schema_path):
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'schema.sql')
+        
     with open(schema_path, 'r', encoding='utf-8') as f:
         conn.executescript(f.read())
     conn.commit()

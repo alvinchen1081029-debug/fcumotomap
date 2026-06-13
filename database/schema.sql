@@ -24,6 +24,18 @@ CREATE TABLE IF NOT EXISTS danger_zones (
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
+<<<<<<< HEAD
+-- Database schema for fcumotomap
+CREATE TABLE IF NOT EXISTS intersections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    requires_two_stage INTEGER NOT NULL DEFAULT 1, -- 1: 需兩段式左轉, 0: 免兩段式左轉
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+=======
 -- Create comments table
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,3 +74,4 @@ INSERT INTO comments (id, danger_zone_id, author, content, created_at) VALUES
 (4, 2, '逢甲大一新生', '公車靠站時完全把機車道擋住，只能切到左側汽車道，好幾次差點被後車追撞...', '2026-06-01 16:22:00'),
 (5, 3, 'FCU騎士', '待轉區真的很小，每次都停到斑馬線上，行人都在看我們。', '2026-06-02 09:10:00'),
 (6, 3, '機車即正義', '其實這個路口應該直接開放機車左轉，強迫待轉反而更危險。', '2026-06-02 10:05:00');
+>>>>>>> origin/main
