@@ -1,99 +1,114 @@
-# 城市機車友善地圖系統 - 路由與頁面設計文件 (ROUTES)
+# 城市機車友善地圖與車流量查詢系統 - 路由與頁面設計 (ROUTES)
 
-本文件規劃 Flask 後端的路由與 API 設計，定義每個 URL 的功能、傳入參數、回傳值以及前端 Jinja2 模板對照。
+本文件說明 Flask 後端的所有路由（頁面渲染路由與 AJAX JSON API 路由）設計。
 
 ## 1. 路由總覽
 
-| 功能 | HTTP 方法 | URL 路徑 | 對應模板 | 說明 |
-| :--- | :--- | :--- | :--- | :--- |
-| **首頁與主地圖** | GET | `/` | `index.html` | 顯示網站首頁與基礎地圖，整合危險路段與左轉提示。 |
-| **兩段式左轉列表** | GET | `/left_turn` | `left_turn/list.html` | 列表顯示所有需兩段式左轉路口。 |
-| **新增左轉路口** | POST | `/left_turn/create` | — | 接收表單，新增兩段式左轉路段，重導向至列表。 |
-| **危險路段列表** | GET | `/danger` | `danger/list.html` | 顯示所有危險路段與其評分星等。 |
-| **新增危險路段** | POST | `/danger/create` | — | 接收使用者危險評估回報，重導向至列表。 |
-| **附近推薦頁面** | GET | `/recommendations` | `recommendations/index.html` | 附近推薦功能的主頁面與互動地圖。 |
-| **附近推薦 API** | GET | `/api/nearby` | — | API 端點，回傳鄰近 POI 與危險路段 (JSON)。 |
+| 功能描述 | HTTP 方法 | URL 路徑 | 對應 HTML 模板 | 說明 |
+| :--- | :---: | :--- | :--- | :--- |
+| **首頁與地圖** | `GET` | `/` | `templates/index.html` | 系統入口首頁，包含 Leaflet.js 地圖與查詢控制項 |
+| **危險路段列表** | `GET` | `/danger-zones` | `templates/danger_zone_list.html` | 清單模式檢視附近危險路段與危險星級 |
+| **危險路段詳情** | `GET` | `/danger-zones/<id>` | `templates/danger_zone_detail.html` | 顯示單筆危險路段詳細描述、留言列表與投票 |
+| **新增留言** | `POST` | `/danger-zones/<id>/comments` | — (重導向至詳情頁) | 接收留言表單資料，寫入資料庫後重導向 |
+| **取得所有路段 API**| `GET` | `/api/roads` | — (JSON) | 地圖請求所有路段車流量幾何資訊的 API |
+| **取得危險點 API**| `GET` | `/api/danger-zones` | — (JSON) | 地圖請求所有危險標記點經緯度的 API |
+| **回報危險點 API**| `POST` | `/api/danger-zones` | — (JSON) | 地圖上點擊右鍵新增危險路段的 POST API |
+| **投票 API** | `POST` | `/api/danger-zones/<id>/vote` | — (JSON) | 對特定危險點進行贊同/反對投票的 POST API |
 
 ---
 
 ## 2. 路由詳細說明
 
-### 2.1 首頁與主地圖 (`GET /`)
-- **輸入**: 無。
-- **處理邏輯**: 呼叫 `LeftTurn.get_all()` 與 `DangerousRoad.get_all()` 取得全域標記，傳遞給模板進行地圖初始化渲染。
-- **輸出**: 渲染 `index.html`，在地圖上繪製全域標記。
-- **錯誤處理**: 資料庫查詢失敗時，回傳空清單，並使用 `flash` 顯示警告訊息。
+### 2.1 頁面渲染路由
 
-### 2.2 附近推薦頁面 (`GET /recommendations`)
-- **輸入**: 無。
-- **處理邏輯**: 渲染包含 Leaflet.js 地圖與類別篩選按鈕的前端頁面。頁面載入後，前端會透過 Geolocation 取得位置並呼叫 API。
-- **輸出**: 渲染 `recommendations/index.html`。
-- **錯誤處理**: 無。
+#### `GET /`
+*   **用途**：首頁。
+*   **輸入參數**：無。
+*   **處理邏輯**：渲染 `index.html`。
+*   **輸出**：HTML 頁面。
 
-### 2.3 附近推薦 API (`GET /api/nearby`)
-- **輸入**: 
-  - `lat`: float (必填，騎士緯度座標)
-  - `lng`: float (必填，騎士經度座標)
-  - `radius`: float (選填，搜尋半徑公里，預設 `2.0`)
-  - `type`: string (選填，過濾 POI 類型: `'shop'`, `'gas'`, `'charging'`, `'parking'`, `'danger'`, `'all'`，預設 `'all'`)
-- **處理邏輯**: 
-  - 驗證 `lat` 與 `lng` 是否為合法經緯度。
-  - 若 `type` 為 `'danger'`，呼叫 `DangerousRoad.get_nearby_dangers(lat, lng, radius)`。
-  - 若 `type` 為其他，呼叫 `POI.get_nearby_pois(lat, lng, radius, type)`。
-  - 若 `type` 為 `'all'`，同時取得周邊的 POI 與危險路段，並合併依距離排序。
-- **輸出**: 回傳 JSON 格式列表：
-  ```json
-  [
-    {
-      "id": 1,
-      "name": "逢甲機車行",
-      "type": "shop",
-      "latitude": 24.1791,
-      "longitude": 120.6455,
-      "address": "台中市西屯區...",
-      "phone": "04-23456789",
-      "rating": 4.5,
-      "description": "營業時間: 09:00-21:00",
-      "dist": 0.15
-    }
-  ]
-  ```
-- **錯誤處理**: 
-  - 若缺乏 `lat` 或 `lng` 參數，回傳 HTTP 400 Bad Request 及錯誤 JSON。
-  - 若格式轉換錯誤，回傳 HTTP 400。
+#### `GET /danger-zones`
+*   **用途**：以列表形式查看所有回報的危險路段。
+*   **輸入參數**：無。
+*   **處理邏輯**：呼叫 `DangerZone.get_all()` 獲取資料庫中所有危險點，依建立時間由新到舊排序。
+*   **輸出**：渲染 `danger_zone_list.html`。
 
-### 2.4 新增左轉路口 (`POST /left_turn/create`)
-- **輸入**: `location_name`, `latitude`, `longitude`, `description` (來自 HTML Form)。
-- **處理邏輯**: 驗證必填欄位。呼叫 `LeftTurn.create(data)` 寫入資料庫。
-- **輸出**: 重導向至 `GET /left_turn`。
-- **錯誤處理**: 若必填欄位為空，使用 `flash` 儲存錯誤訊息，並返回原表單。
+#### `GET /danger-zones/<int:id>`
+*   **用途**：查看特定危險路段的詳細說明與討論。
+*   **輸入參數**：URL 參數 `id`。
+*   **處理邏輯**：
+    1. 呼叫 `DangerZone.get_by_id(id)`。若不存在則回傳 404。
+    2. 呼叫 `DangerZone.get_comments(id)` 獲取其下所有留言。
+*   **輸出**：渲染 `danger_zone_detail.html`。
 
-### 2.5 新增危險路段 (`POST /danger/create`)
-- **輸入**: `road_name`, `latitude`, `longitude`, `danger_level`, `description`。
-- **處理邏輯**: 驗證必填欄位且 `danger_level` 需在 1-5 之間。呼叫 `DangerousRoad.create(data)`。
-- **輸出**: 重導向至 `GET /danger`。
-- **錯誤處理**: 驗證失敗時 `flash` 錯誤訊息並返回原頁面。
+#### `POST /danger-zones/<int:id>/comments`
+*   **用途**：在危險路段詳情頁提交新留言。
+*   **輸入參數**：表單欄位 `author` (預設匿名)、`content` (必填)。
+*   **處理邏輯**：
+    1. 驗證 `content` 是否為空。若為空，透過 Flask `flash` 顯示錯誤，並重導向回詳情頁。
+    2. 呼叫 `DangerZone.add_comment(id, author, content)` 存入資料庫。
+*   **輸出**：`redirect(url_for('main.danger_zone_detail', id=id))`。
+
+---
+
+### 2.2 AJAX API 路由 (JSON 回傳)
+
+#### `GET /api/roads`
+*   **用途**：地圖初始化時拉取路段資料。
+*   **輸入參數**：可選的 Query 參數 `name` (模糊搜尋)、`traffic_level` (車流量篩選)、`two_stage_turn` (是否待轉篩選)。
+*   **處理邏輯**：根據篩選條件呼叫 `Road.get_filtered_roads(name, traffic_level, two_stage_turn)`。
+*   **輸出**：JSON 陣列。
+    ```json
+    [
+      {
+        "id": 1,
+        "name": "福星路",
+        "traffic_level": "medium",
+        "two_stage_turn": 0,
+        "coordinates": [[24.1786, 120.6468], [24.1798, 120.6472]],
+        "description": "主要商圈幹道，下班時間車流量多"
+      }
+    ]
+    ```
+
+#### `GET /api/danger-zones`
+*   **用途**：地圖上標示所有危險警告紅點。
+*   **輸入參數**：無。
+*   **處理邏輯**：呼叫 `DangerZone.get_all()`。
+*   **輸出**：JSON 陣列。
+    ```json
+    [
+      {
+        "id": 1,
+        "latitude": 24.1792,
+        "longitude": 120.6470,
+        "title": "文華路口地面濕滑",
+        "rating": 4,
+        "upvotes": 12,
+        "downvotes": 2
+      }
+    ]
+    ```
+
+#### `POST /api/danger-zones`
+*   **用途**：地圖右鍵彈出表單後，以 AJAX 發送新增。
+*   **輸入參數**：JSON Payload `{"latitude": 24.18, "longitude": 120.65, "title": "...", "description": "...", "rating": 5}`。
+*   **處理邏輯**：
+    1. 驗證欄位是否完整，經緯度是否在合理區間。
+    2. 呼叫 `DangerZone.create(data)` 存入資料庫。
+*   **輸出**：JSON `{ "status": "success", "id": 12 }` 或錯誤訊息。
+
+#### `POST /api/danger-zones/<int:id>/vote`
+*   **用途**：對回報點點擊贊同或反對。
+*   **輸入參數**：JSON Payload `{"type": "upvote"}` 或 `{"type": "downvote"}`。
+*   **處理邏輯**：呼叫 `DangerZone.vote(id, vote_type)` 增加計數。
+*   **輸出**：JSON `{ "status": "success", "upvotes": 13, "downvotes": 2 }`。
 
 ---
 
 ## 3. Jinja2 模板清單
 
-所有模板均繼承 `base.html` 基礎模板，並定義在 `app/templates/` 目錄中：
-
-1. **`base.html`**
-   - 全域版面與 CSS/JS 庫引用。
-   - 引用 Bootstrap 5 CSS 與 JS。
-   - 引用 Leaflet.js CSS 與 JS（供地圖頁面使用）。
-   - 包含系統頂部導覽列 (Navbar) 與 `flash_messages` 顯示區。
-2. **`index.html`**
-   - 繼承 `base.html`。
-   - 渲染首頁，中央放置 Leaflet 地圖容器。
-3. **`left_turn/list.html`**
-   - 繼承 `base.html`。
-   - 顯示目前標記的所有左轉路口表格，並附有新增表單。
-4. **`danger/list.html`**
-   - 繼承 `base.html`。
-   - 顯示危險路段列表、各路段的平均星級評價、回報表單。
-5. **`recommendations/index.html`**
-   - 繼承 `base.html`。
-   - 前端採用左右二分欄佈局：左側為推薦類別切換鈕（全部、機車行、加油站、換電站、停車場、危險警示）與卡片清單；右側為 Leaflet 地圖容器。
+1.  `base.html`：全局基礎板型。包含 Bootstrap 5 導航列、頁尾、以及 AJAX 使用的快顯訊息框架構。
+2.  `index.html`：包含左側查詢/篩選與快速搜尋欄位，右側滿版地圖容器。繼承自 `base.html`。
+3.  `danger_zone_list.html`：卡片式列表頁面，顯示目前回報的所有危險路段，並提供排序或簡單搜尋。繼承自 `base.html`。
+4.  `danger_zone_detail.html`：顯示該點危險標題、位置、星級與描述。右側為投票按鈕，下方為留言列表與發表留言的表單。繼承自 `base.html`。
