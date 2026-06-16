@@ -1,625 +1,495 @@
-{% extends "base.html" %}
-
-{% block extra_css %}
-<style>
-    /* Fullscreen/Dashboard Layout */
-    .dashboard-container {
-        display: flex;
-        height: calc(100vh - 69px); /* Subtract navbar height */
-        overflow: hidden;
-    }
-
-    /* Sidebar Styling */
-    .sidebar-panel {
-        width: 380px;
-        background: rgba(15, 23, 42, 0.95);
-        border-right: 1px solid var(--border-glow);
-        display: flex;
-        flex-direction: column;
-        z-index: 1000;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-    }
-
-    .sidebar-header {
-        padding: 20px;
-        border-bottom: 1px solid var(--border-glow);
-    }
-
-    .sidebar-content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-    }
-
-    /* Map Styling */
-    .map-container {
-        flex: 1;
-        height: 100%;
-        position: relative;
-    }
-
-    #map {
-        width: 100%;
-        height: 100%;
-        background-color: #0b0f19;
-    }
-
-    /* Custom Input and Cards */
-    .glass-card {
-        background: rgba(30, 41, 59, 0.45);
-        border: 1px solid var(--border-glow);
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 15px;
-        transition: all 0.25s ease;
-        cursor: pointer;
-    }
-
-    .glass-card:hover {
-        background: rgba(30, 41, 59, 0.7);
-        border-color: var(--primary-glow);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(56, 189, 248, 0.15);
-    }
-
-    .glass-card.active {
-        background: rgba(56, 189, 248, 0.1);
-        border-color: var(--primary-glow);
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
-    }
-
-    .search-box {
-        background: rgba(30, 41, 59, 0.6);
-        border: 1px solid var(--border-glow);
-        color: var(--text-main);
-        border-radius: 10px;
-        padding: 10px 15px;
-        transition: all 0.3s;
-    }
-
-    .search-box:focus {
-        background: rgba(30, 41, 59, 0.85);
-        border-color: var(--primary-glow);
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
-        color: var(--text-main);
-    }
-
-    .form-control-custom {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid var(--border-glow);
-        color: var(--text-main);
-        border-radius: 8px;
-    }
-
-    .form-control-custom:focus {
-        background: rgba(15, 23, 42, 0.9);
-        border-color: var(--primary-glow);
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
-        color: var(--text-main);
-    }
-
-    .form-label-custom {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--text-muted);
-        margin-bottom: 5px;
-    }
-
-    /* Custom Leaflet Marker Icons with Neon Glow Pulse */
-    .custom-marker {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 50%;
-        color: white;
-        font-weight: bold;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        border: 2px solid white;
-    }
-
-    .marker-two-stage {
-        background-color: var(--accent-two-stage);
-        box-shadow: 0 0 15px var(--accent-two-stage);
-        animation: pulse-orange 2s infinite;
-    }
-
-    .marker-direct {
-        background-color: var(--accent-direct);
-        box-shadow: 0 0 15px var(--accent-direct);
-        animation: pulse-green 2s infinite;
-    }
-
-    @keyframes pulse-orange {
-        0% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
-        70% { box-shadow: 0 0 0 12px rgba(251, 146, 60, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0); }
-    }
-
-    @keyframes pulse-green {
-        0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-        70% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-    }
-
-    /* Leaflet Popup Premium Theme */
-    .leaflet-popup-content-wrapper {
-        background: rgba(15, 23, 42, 0.95) !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-glow) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
-        backdrop-filter: blur(8px);
-    }
-
-    .leaflet-popup-tip {
-        background: rgba(15, 23, 42, 0.95) !important;
-        border: 1px solid var(--border-glow) !important;
-    }
-
-    /* Quick Badge Rules */
-    .badge-two-stage {
-        background: rgba(251, 146, 60, 0.15);
-        color: var(--accent-two-stage);
-        border: 1px solid rgba(251, 146, 60, 0.3);
-    }
-
-    .badge-direct {
-        background: rgba(74, 222, 128, 0.15);
-        color: var(--accent-direct);
-        border: 1px solid rgba(74, 222, 128, 0.3);
-    }
-
-    /* Form Mode Indicator */
-    .click-hint {
-        font-size: 0.8rem;
-        background: rgba(56, 189, 248, 0.1);
-        color: var(--primary-glow);
-        border: 1px dashed rgba(56, 189, 248, 0.3);
-        border-radius: 8px;
-        padding: 8px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    /* Custom Scrollbars in panels */
-    .sidebar-content::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-    }
-    .sidebar-content::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Leaflet Map controls customization */
-    .leaflet-control-zoom a {
-        background-color: rgba(30, 41, 59, 0.9) !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-glow) !important;
-    }
-    .leaflet-control-zoom a:hover {
-        background-color: var(--primary-glow) !important;
-        color: var(--bg-dark) !important;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="dashboard-container">
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最強最安全的城市機車友善地圖</title>
     
-    <!-- Sidebar: Search & Intersections List & Reporting Form -->
-    <div class="sidebar-panel">
-        
-        <!-- Tab Navigation to switch between List and Report -->
-        <div class="sidebar-header">
-            <ul class="nav nav-pills nav-fill" id="sidebarTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active py-2 btn-sm rounded-pill" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-tab-pane" type="button" role="tab" aria-controls="list-tab-pane" aria-selected="true">
-                        <i class="fa-solid fa-list-ul me-1"></i>路口列表
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link py-2 btn-sm rounded-pill" id="report-tab" data-bs-toggle="tab" data-bs-target="#report-tab-pane" type="button" role="tab" aria-controls="report-tab-pane" aria-selected="false">
-                        <i class="fa-solid fa-map-pin me-1"></i>回報路口
-                    </button>
-                </li>
-            </ul>
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Custom Cyber Dark Styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Dynamic Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <i class="fas fa-motorcycle"></i>
+            </div>
+            <div class="brand-text">
+                <h1>最強最安全的城市機車友善地圖</h1>
+                <span>危險路段評價系統 &bull; F-03</span>
+            </div>
         </div>
-        
-        <div class="sidebar-content tab-content" id="sidebarTabsContent">
+
+        <div class="header-stats">
+            <!-- Day/Night Commuting Mode Toggle -->
+            <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換日夜騎乘地圖樣式">
+                <i class="fas fa-sun"></i> <span>☀️ 日間清晰</span>
+            </button>
             
-            <!-- LIST TAB -->
-            <div class="tab-pane fade show active" id="list-tab-pane" role="tabpanel" aria-labelledby="list-tab" tabindex="0">
-                <!-- Search Box -->
-                <div class="mb-4 position-relative">
-                    <input type="text" id="intersectionSearch" class="form-control search-box w-100" placeholder="搜尋路口名稱... (例如: 逢甲路)">
-                    <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="right: 15px; top: 13px;"></i>
-                </div>
-                
-                <div id="noResults" class="text-center text-muted my-5 d-none">
-                    <i class="fa-regular fa-map-marker-question fa-3x mb-3"></i>
-                    <p>找不到符合條件的路口</p>
-                </div>
-                
-                <!-- Intersections List -->
-                <div id="intersectionsList">
-                    {% for intersection in intersections %}
-                    <div class="glass-card" 
-                         id="card-{{ intersection.id }}" 
-                         data-id="{{ intersection.id }}"
-                         data-name="{{ intersection.name }}"
-                         data-lat="{{ intersection.latitude }}"
-                         data-lng="{{ intersection.longitude }}"
-                         onclick="focusIntersection({{ intersection.id }}, {{ intersection.latitude }}, {{ intersection.longitude }})">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="m-0 fs-6 text-white">{{ intersection.name }}</h5>
-                            {% if intersection.requires_two_stage == 1 %}
-                                <span class="badge badge-two-stage rounded-pill px-2 py-1 fs-7">
-                                    <i class="fa-solid fa-arrow-turn-up fa-rotate-90 me-1"></i>兩段式左轉
-                                </span>
-                            {% else %}
-                                <span class="badge badge-direct rounded-pill px-2 py-1 fs-7">
-                                    <i class="fa-solid fa-arrow-turn-up me-1"></i>直接左轉
-                                </span>
-                            {% endif %}
-                        </div>
-                        <p class="text-muted fs-7 mb-2 text-truncate-2">{{ intersection.description or '無詳細規則說明。' }}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span class="fs-8 text-secondary">
-                                <i class="fa-solid fa-compass me-1"></i>{{ "%.4f"|format(intersection.latitude) }}, {{ "%.4f"|format(intersection.longitude) }}
-                            </span>
-                            <button class="btn btn-sm btn-outline-danger border-0 p-1 fs-8" 
-                                    onclick="event.stopPropagation(); deleteIntersectionRule({{ intersection.id }}, '{{ intersection.name }}')">
-                                <i class="fa-solid fa-trash-can"></i> 刪除
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+            <div class="stat-pill spots">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>安全點標記:</span>
+                <span class="count" id="total-danger-spots">0</span>
+            </div>
+            <div class="stat-pill votes">
+                <i class="fas fa-heart"></i>
+                <span>社群共建:</span>
+                <span class="count" id="total-votes-count">0</span>
             </div>
             
-            <!-- REPORT TAB -->
-            <div class="tab-pane fade" id="report-tab-pane" role="tabpanel" aria-labelledby="report-tab" tabindex="0">
-                <div class="click-hint">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <span>在地圖上點擊以自動帶入路口座標</span>
-                </div>
-                
-                <form id="reportForm" onsubmit="submitReport(event)">
-                    <div class="mb-3">
-                        <label class="form-label-custom">路口名稱 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-custom" id="formName" required placeholder="如：福星路與河南路口">
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label-custom">緯度 (Latitude) <span class="text-danger">*</span></label>
-                            <input type="number" step="any" class="form-control form-control-custom" id="formLat" required readonly placeholder="點擊地圖取得">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label-custom">經度 (Longitude) <span class="text-danger">*</span></label>
-                            <input type="number" step="any" class="form-control form-control-custom" id="formLng" required readonly placeholder="點擊地圖取得">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label-custom">是否需要兩段式左轉？ <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-3 mt-1">
-                            <div class="form-check flex-fill">
-                                <input class="form-check-input" type="radio" name="requires_two_stage" id="twoStageYes" value="1" checked>
-                                <label class="form-check-label text-white fs-7" for="twoStageYes">
-                                    <span class="badge badge-two-stage rounded-pill px-2">需兩段式左轉</span>
-                                </label>
-                            </div>
-                            <div class="form-check flex-fill">
-                                <input class="form-check-input" type="radio" name="requires_two_stage" id="twoStageNo" value="0">
-                                <label class="form-check-label text-white fs-7" for="twoStageNo">
-                                    <span class="badge badge-direct rounded-pill px-2">免兩段式左轉</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label-custom">詳細規則說明 (Optional)</label>
-                        <textarea class="form-control form-control-custom" id="formDescription" rows="4" placeholder="例如：福星路西向東需兩段式左轉，待轉區容量大。"></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-info w-100 py-2 rounded-3 text-white fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <span>送出路口規則</span>
-                    </button>
-                </form>
+            <div class="user-profile" id="header-profile">
+                <div class="user-avatar">陳</div>
+                <div class="user-name" id="user-profile-name">陳同學 (點擊看徽章)</div>
             </div>
-            
         </div>
-    </div>
-    
-    <!-- Map Container -->
-    <div class="map-container">
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-container">
+        <!-- Interactive Map Container -->
         <div id="map"></div>
-    </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-    // Global state
-    let map;
-    let markers = {};
-    let activeCard = null;
-    let clickMarker = null;
+        <!-- Floating Controls overlay on map -->
+        <div class="map-float-controls">
+            <!-- Mode Switcher Segmented Control -->
+            <div class="mode-switcher">
+                <button class="mode-btn active danger-mode" id="mode-danger-btn">
+                    <i class="fas fa-exclamation-triangle"></i> 危險路段
+                </button>
+                <button class="mode-btn toilet-mode" id="mode-toilet-btn">
+                    <i class="fas fa-restroom"></i> 尋找公廁
+                </button>
+            </div>
 
-    // Initialize Leaflet Map centered at Feng Chia University (逢甲大學)
-    document.addEventListener("DOMContentLoaded", function () {
-        map = L.map('map', {
-            zoomControl: false // Positioned customly later or handled standardly
-        }).setView([24.1786, 120.6466], 15); // Zoom level 15
-
-        // Add standard zoom control to top-right
-        L.control.zoom({ position: 'topright' }).addTo(map);
-
-        // Load premium dark-theme tile layer from CartoDB (perfect match for dark UI)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(map);
-
-        // Load all intersections to the map
-        loadMapMarkers();
-
-        // Setup Map Click Listener for Reporting
-        map.on('click', function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            
-            // Auto fill coordinates
-            document.getElementById('formLat').value = lat.toFixed(6);
-            document.getElementById('formLng').value = lng.toFixed(6);
-
-            // Switch to Report Tab
-            const reportTabTrigger = document.querySelector('#report-tab');
-            const tab = new bootstrap.Tab(reportTabTrigger);
-            tab.show();
-
-            // Set temporary click marker on map
-            if (clickMarker) {
-                map.removeLayer(clickMarker);
-            }
-            clickMarker = L.marker([lat, lng], {
-                icon: L.divIcon({
-                    html: '<i class="fa-solid fa-location-crosshairs fa-2x text-info"></i>',
-                    className: 'temp-marker-icon',
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
-                })
-            }).addTo(map);
-            
-            // Pan to the clicked spot smoothly
-            map.panTo([lat, lng]);
-        });
-
-        // Setup Live Search filter
-        document.getElementById('intersectionSearch').addEventListener('input', function(e) {
-            const query = e.target.value.toLowerCase();
-            let hasResults = false;
-            
-            document.querySelectorAll('.glass-card').forEach(card => {
-                const name = card.getAttribute('data-name').toLowerCase();
-                if (name.includes(query)) {
-                    card.classList.remove('d-none');
-                    hasResults = true;
-                    // Show corresponding marker
-                    const id = card.getAttribute('data-id');
-                    if (markers[id]) {
-                        map.addLayer(markers[id]);
-                    }
-                } else {
-                    card.classList.add('d-none');
-                    // Hide corresponding marker
-                    const id = card.getAttribute('data-id');
-                    if (markers[id]) {
-                        map.removeLayer(markers[id]);
-                    }
-                }
-            });
-
-            const noResultsElement = document.getElementById('noResults');
-            if (hasResults) {
-                noResultsElement.classList.add('d-none');
-            } else {
-                noResultsElement.classList.remove('d-none');
-            }
-        });
-    });
-
-    // Load and render all markers on the map
-    function loadMapMarkers() {
-        // Clear any existing markers
-        for (let key in markers) {
-            map.removeLayer(markers[key]);
-        }
-        markers = {};
-
-        // Parse through list items
-        document.querySelectorAll('.glass-card').forEach(card => {
-            const id = card.getAttribute('data-id');
-            const name = card.getAttribute('data-name');
-            const lat = parseFloat(card.getAttribute('data-lat'));
-            const lng = parseFloat(card.getAttribute('data-lng'));
-            
-            // Check if two-stage badge or direct
-            const isTwoStage = card.innerHTML.includes('兩段式左轉');
-            
-            // Create glowing HTML div icon
-            const customIcon = L.divIcon({
-                className: `custom-marker ${isTwoStage ? 'marker-two-stage' : 'marker-direct'}`,
-                html: isTwoStage ? '待' : '直',
-                iconSize: [28, 28],
-                iconAnchor: [14, 14]
-            });
-
-            // Create popup HTML
-            const popupContent = `
-                <div style="font-family: 'Noto Sans TC', sans-serif; padding: 5px; min-width: 200px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <strong style="color: #fff; font-size: 0.95rem;">${name}</strong>
+            <!-- Search & Filters -->
+            <div class="glass-panel">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="搜尋路段、交叉路口、或待轉區...">
+                </div>
+                
+                <div class="filter-group" id="legend-danger">
+                    <div class="filter-title">資訊圖層篩選 (點擊切換)</div>
+                    <div class="filter-options-interactive">
+                        <label class="filter-checkbox-container">
+                            <input type="checkbox" id="toggle-danger-layer" checked>
+                            <span class="custom-checkbox danger"></span>
+                            <span class="filter-text">⚠️ 顯示危險路段標記</span>
+                        </label>
+                        <label class="filter-checkbox-container">
+                            <input type="checkbox" id="toggle-leftturn-layer" checked>
+                            <span class="custom-checkbox leftturn"></span>
+                            <span class="filter-text">🔄 顯示兩段式左轉提示</span>
+                        </label>
+                        <label class="filter-checkbox-container">
+                            <input type="checkbox" id="toggle-road-layer" checked>
+                            <span class="custom-checkbox road"></span>
+                            <span class="filter-text">🚗 顯示道路流量資訊 (彩色線)</span>
+                        </label>
                     </div>
-                    <div style="margin-bottom: 8px;">
-                        <span class="badge ${isTwoStage ? 'badge-two-stage' : 'badge-direct'}" style="font-size: 0.8rem; padding: 4px 8px; border-radius: 6px;">
-                            ${isTwoStage ? '<i class="fa-solid fa-arrow-turn-up fa-rotate-90 me-1"></i>兩段式左轉' : '<i class="fa-solid fa-arrow-turn-up me-1"></i>直接左轉'}
-                        </span>
+                    
+                    <div class="filter-legend-divider"></div>
+                    
+                    <div class="filter-title">地圖圖例說明</div>
+                    <div class="filter-options">
+                        <span class="filter-label"><span class="badge danger-5">★ 5</span> 極度危險 (易出事 / 瓶頸路段)</span>
+                        <span class="filter-label"><span class="badge danger-4">★ 4</span> 高度危險 (違停 / 視線死角多)</span>
+                        <span class="filter-label"><span class="badge danger-3">★ 3</span> 中度危險 (車流大 / 易有急停)</span>
+                        <span class="filter-label"><span class="badge leftturn-badge">待轉</span> 兩段式左轉提示點</span>
                     </div>
-                    <p style="color: #cbd5e1; font-size: 0.8rem; line-height: 1.4; margin: 0 0 10px 0;">
-                        ${card.querySelector('p').innerText}
-                    </p>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #64748b; font-size: 0.75rem;">ID: #${id}</span>
-                        <button onclick="deleteIntersectionRule(${id}, '${name}')" style="background: none; border: none; color: #f87171; font-size: 0.8rem; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-trash-can"></i> 刪除
+                </div>
+                <div class="filter-group" id="legend-toilet" style="display: none;">
+                    <div class="filter-title">地圖圖例說明</div>
+                    <div class="filter-options">
+                        <span class="filter-label"><span class="badge toilet-tag" style="background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.4);">🚻 公廁</span> 青色呼吸燈標記</span>
+                        <span class="filter-label" style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> 點擊地圖上的任意位置可回報公廁</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 0.75rem;">
+                    <div class="filter-title">騎士友善設施</div>
+                    <div class="facility-toggles" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="facility-toggle-btn" id="toggle-gas-stations" type="button">
+                            <i class="fas fa-gas-pump"></i> 加油站
+                        </button>
+                        <button class="facility-toggle-btn" id="toggle-parking-lots" type="button">
+                            <i class="fas fa-parking"></i> 停車場
                         </button>
                     </div>
                 </div>
-            `;
+            </div>
 
-            // Create Marker
-            const marker = L.marker([lat, lng], { icon: customIcon })
-                .bindPopup(popupContent);
-            
-            // Popup Open Event to highlight card
-            marker.on('popupopen', function() {
-                highlightCard(id);
-                // Pan map slightly to accommodate popup
-                map.panTo([lat, lng]);
-            });
+            <!-- Heatmap Mode Trigger -->
+            <button class="map-tools-btn" id="heatmap-btn">
+                <i class="fas fa-fire"></i> 開啟危險熱點圖
+            </button>
 
-            marker.on('popupclose', function() {
-                unhighlightCard();
-            });
+            <!-- Add Danger Report Trigger -->
+            <button class="map-tools-btn" id="add-danger-btn" style="border-left-color: var(--accent-blue);">
+                <i class="fas fa-plus-circle"></i> + 回報危險路段
+            </button>
+        </div>
 
-            marker.addTo(map);
-            markers[id] = marker;
-        });
-    }
+        <!-- Bottom Drawer: Dangerous List View (Nearby) -->
+        <div class="list-drawer glass-panel" id="list-drawer">
+            <div class="list-drawer-header">
+                <h3><i class="fas fa-list-ul" style="color: var(--accent-blue); margin-right: 5px;"></i> <span id="drawer-list-title">逢甲學區危險路段清單</span></h3>
+                <div class="drawer-tabs" id="drawer-tabs-container">
+                    <button id="tab-all-spots" class="drawer-tab active">全部</button>
+                    <button id="tab-fav-spots" class="drawer-tab"><i class="fas fa-heart" style="font-size: 0.75rem; margin-right: 3px;"></i>我的收藏</button>
+                </div>
+                <button class="close-btn" id="drawer-close"><i class="fas fa-chevron-down"></i></button>
+            </div>
+            <div class="drawer-items-list" id="drawer-items-list">
+                <!-- Javascript will render drawer items dynamically -->
+            </div>
+        </div>
 
-    // Highlight card in sidebar when marker is clicked
-    function highlightCard(id) {
-        unhighlightCard();
-        const card = document.getElementById(`card-${id}`);
-        if (card) {
-            card.classList.add('active');
-            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            activeCard = card;
-        }
-    }
+        <!-- Float Drawer toggle button (when drawer is collapsed) -->
+        <button class="drawer-toggle-btn" id="drawer-toggle">
+            <i class="fas fa-list-ul"></i> <span id="drawer-toggle-text">瀏覽危險清單</span>
+        </button>
 
-    // Unhighlight active card
-    function unhighlightCard() {
-        if (activeCard) {
-            activeCard.classList.remove('active');
-            activeCard = null;
-        }
-    }
+        <!-- Right Side Panel: Details View & Submission Form -->
+        <div class="sidebar-right glass-panel" id="sidebar-right">
+            <div class="sidebar-header">
+                <h2>評估詳情與回報</h2>
+                <button class="close-btn" id="sidebar-close"><i class="fas fa-times"></i></button>
+            </div>
 
-    // Programmatically focus/zoom in on an intersection when clicked in sidebar
-    function focusIntersection(id, lat, lng) {
-        // Open the tab/marker popup
-        if (markers[id]) {
-            markers[id].openPopup();
-        }
-        map.setView([lat, lng], 17); // Close-up view zoom level 17
-    }
+            <div class="sidebar-content">
+                <!-- VIEW 1: Danger/Turn Point Details -->
+                <div class="info-body" id="sidebar-details-view">
+                    <div class="hazard-meta">
+                        <span class="hazard-type-tag" id="detail-hazard-name">臨停違停 / 視線死角</span>
+                        <div class="star-rating" id="detail-stars">
+                            <!-- JS renders stars -->
+                        </div>
+                    </div>
 
-    // Handle AJAX report submission
-    function submitReport(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('formName').value;
-        const latitude = document.getElementById('formLat').value;
-        const longitude = document.getElementById('formLng').value;
-        const requires_two_stage = document.querySelector('input[name="requires_two_stage"]:checked').value;
-        const description = document.getElementById('formDescription').value;
-
-        fetch('/api/intersections', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name,
-                latitude,
-                longitude,
-                requires_two_stage,
-                description
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Clear Form
-                document.getElementById('reportForm').reset();
-                document.getElementById('formLat').value = '';
-                document.getElementById('formLng').value = '';
-
-                // Remove temporary click marker
-                if (clickMarker) {
-                    map.removeLayer(clickMarker);
-                    clickMarker = null;
-                }
-
-                // Add card and reload markers dynamically instead of full page refresh
-                // Fetch latest HTML representation, or simple page reload to render templating correctly.
-                // A quick reload makes it easiest and cleanest to ensure order, or we can refresh just the list via API.
-                // To keep user experience modern, let's reload the page.
-                window.location.reload();
-            } else {
-                alert('錯誤: ' + (data.error || '回報失敗，請重試！'));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('送出時發生錯誤，請檢查伺服器連線！');
-        });
-    }
-
-    // Delete intersection rule
-    function deleteIntersectionRule(id, name) {
-        if (confirm(`確定要刪除「${name}」的路口提示規則嗎？`)) {
-            fetch(`/api/intersections/${id}/delete`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Remove marker
-                    if (markers[id]) {
-                        map.removeLayer(markers[id]);
-                        delete markers[id];
-                    }
+                    <div class="detail-title-container" style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; gap: 10px;">
+                        <h2 id="detail-title" style="margin: 0; font-size: 1.3rem; font-weight: 700; color: white; line-height: 1.3;">逢甲路與福星路口</h2>
+                        <button class="favorite-btn" id="favorite-toggle-btn" title="收藏此地點">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
                     
-                    // Remove card
-                    const card = document.getElementById(`card-${id}`);
-                    if (card) {
-                        card.remove();
-                    }
+                    <!-- Toilet Specific Attributes Panel -->
+                    <div class="form-group" id="toilet-details-card" style="display: none; margin-bottom: 0.5rem;">
+                        <div class="toilet-indicators">
+                            <div class="toilet-indicator-card" id="detail-toilet-paper">
+                                <i class="fas fa-toilet-paper"></i>
+                                <span>提供紙巾</span>
+                            </div>
+                            <div class="toilet-indicator-card" id="detail-toilet-accessible">
+                                <i class="fas fa-wheelchair"></i>
+                                <span>無障礙</span>
+                            </div>
+                            <div class="toilet-indicator-card" id="detail-toilet-parking">
+                                <i class="fas fa-motorcycle"></i>
+                                <span>方便停車</span>
+                            </div>
+                        </div>
+                        <div class="description-box" style="font-size: 0.85rem; padding: 0.6rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-top: 0.5rem; background: rgba(255, 255, 255, 0.02);">
+                            <span style="color: var(--text-secondary);"><i class="far fa-clock"></i> 開放時間</span>
+                            <span id="detail-toilet-hours" style="color: white; font-weight: 600;">24 小時開放</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Left Turn Intersection Evaluation Panel (Visible only for Left Turn points) -->
+                    <div id="detail-left-turn-specs" style="display: none; margin-bottom: 0.5rem;">
+                        <div class="form-group">
+                            <div class="section-label">🔄 兩段式待轉區評估</div>
+                            <div class="left-turn-metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-expand-arrows-alt"></i> 待轉區空間</span>
+                                    <span class="metric-value" id="metric-waiting-size">狹小</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-users"></i> 尖峰擁擠度</span>
+                                    <span class="metric-value" id="metric-crowd-level">極高</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-title"><i class="fas fa-shield-alt"></i> 安全感評級</span>
+                                    <span class="metric-value" id="metric-safety-rating">★★★☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="section-label" id="detail-desc-label">騎士回報詳情</div>
+                        <div class="description-box" id="detail-description">
+                            此處路口尖峰時間車流大，待轉區經常擠滿機車...
+                        </div>
+                    </div>
 
-                    // Show Toast or message
-                    alert('路口規則已成功刪除！');
-                } else {
-                    alert('錯誤: ' + (data.error || '刪除失敗！'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('刪除時發生錯誤！');
-            });
-        }
-    }
-</script>
-{% endblock %}
+                    <div class="reporter-card">
+                        <div class="reporter-info">
+                            <div class="reporter-avatar"><i class="fas fa-user"></i></div>
+                            <div>回報者: <span id="detail-reporter" style="color: white; font-weight: 600;">大三騎士</span></div>
+                        </div>
+                        <div id="detail-time">2026-05-24 18:30</div>
+                    </div>
+
+                    <!-- Voting System (Agree/Disagree) -->
+                    <div class="form-group">
+                        <div class="section-label">這項回報對您有幫助嗎？</div>
+                        <div class="vote-section">
+                            <button class="vote-btn up" id="upvote-btn">
+                                <i class="fas fa-thumbs-up"></i> 贊同安全警示 (<span id="upvote-count">0</span>)
+                            </button>
+                            <button class="vote-btn down" id="downvote-btn">
+                                <i class="fas fa-thumbs-down"></i> 資訊不實 (<span id="downvote-count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Discussion / Comments Section -->
+                    <div class="comments-container">
+                        <div class="section-label">騎士社群討論留言板</div>
+                        <div class="comment-list" id="comment-list">
+                            <!-- Comment items rendered by JS -->
+                        </div>
+                        <div class="comment-input-box">
+                            <input type="text" id="comment-input" placeholder="新增騎士路況補充說明...">
+                            <button class="comment-submit-btn" id="comment-submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: Danger/Toilet Point Report Form -->
+                <div class="info-body" id="sidebar-form-view" style="display: none;">
+                    <div class="location-indicator">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="form-lat-lng">已選擇地圖座標</span>
+                    </div>
+
+                    <form class="report-form" id="hazard-report-form">
+                        <div class="form-group">
+                            <label for="form-title" id="form-title-label">危險地段/路口名稱</label>
+                            <input type="text" id="form-title" placeholder="例如：河南路二段與西安街口" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="form-hazard-type" id="form-hazard-type-label">危險情況分類</label>
+                            <select id="form-hazard-type" required>
+                                <option value="illegal_parking">臨停違停嚴重 / 視線死角</option>
+                                <option value="crowded">人車交織 / 道路擁擠</option>
+                                <option value="fast_lane_merge">快慢車道匯流 / 轉彎不讓</option>
+                                <option value="bad_design">待轉區設計過小 / 路口標線不良</option>
+                                <option value="sudden_stop">外送車輛多 / 常有急停迴轉</option>
+                                <option value="other">其他道路潛在安全危險</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label id="form-rating-label">評定危險星級 (1為低，5為極度危險)</label>
+                            <div class="rating-stars-input" id="form-rating-stars">
+                                <i class="fas fa-star active" data-value="1"></i>
+                                <i class="fas fa-star active" data-value="2"></i>
+                                <i class="fas fa-star active" data-value="3"></i>
+                                <i class="fas fa-star active" data-value="4"></i>
+                                <i class="fas fa-star active" data-value="5"></i>
+                            </div>
+                        </div>
+
+                        <!-- Toilet Specific Attributes (Hidden by default) -->
+                        <div class="form-group" id="form-toilet-attributes" style="display: none;">
+                            <label>公廁屬性與騎士友善指標</label>
+                            <div class="form-checkbox-group">
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-has-paper" checked>
+                                    <span>🧻 提供衛生紙 (廁紙)</span>
+                                </label>
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-is-accessible">
+                                    <span>♿ 提供無障礙空間/無障礙廁所</span>
+                                </label>
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="form-motorcycle-friendly" checked>
+                                    <span>🛵 騎士友善 (方便機車停靠)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="form-toilet-hours-group" style="display: none;">
+                            <label for="form-toilet-hours">開放時間</label>
+                            <input type="text" id="form-toilet-hours" placeholder="例如：24 小時開放 或 08:00-22:00">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="form-description" id="form-desc-label">具體危險路況描述</label>
+                            <textarea id="form-description" placeholder="請詳細說明該路段何時最危險，有什麼潛在盲點？給其他騎士的避雷建議？" required></textarea>
+                        </div>
+
+                        <button type="submit" class="form-submit-btn" id="form-submit-btn">
+                            <i class="fas fa-check-circle"></i> 提交危險標記回報
+                        </button>
+                    </form>
+                </div>
+
+                <!-- VIEW 3: Personal Settings & Badge Achievements Mockup -->
+                <div class="info-body" id="sidebar-settings-view" style="display: none;">
+                    <div class="user-settings-panel">
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <div class="user-avatar" style="width: 60px; height: 60px; font-size: 1.8rem; margin: 0 auto 0.5rem auto; box-shadow: var(--glow-blue);">陳</div>
+                            <h3 style="color: white; font-weight: 700;">陳同學</h3>
+                            <p style="color: var(--accent-blue); font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;"><i class="fas fa-shield-alt"></i> 逢甲學區安全守護者</p>
+                        </div>
+
+                        <div class="user-achievement-badge">
+                            <i class="fas fa-trophy"></i>
+                            <div class="achievement-text">
+                                <h4>安全巡邏星 (等級 3)</h4>
+                                <p>您已成功回報了 5 個危險路段，並獲得了 84 次社群贊同！</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">已解鎖騎士徽章</div>
+                            <div class="badge-gallery">
+                                <div class="badge-item active">
+                                    <i class="fas fa-seedling"></i>
+                                    <span>回報新手</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <i class="fas fa-eye"></i>
+                                    <span>亮眼偵探</span>
+                                </div>
+                                <div class="badge-item active">
+                                    <i class="fas fa-users"></i>
+                                    <span>社群共建者</span>
+                                </div>
+                                <div class="badge-item">
+                                    <i class="fas fa-medal" style="color: var(--text-muted)"></i>
+                                    <span style="color: var(--text-muted)">安全達人</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">我的收藏地點</div>
+                            <div class="favorites-list-container" id="settings-favorites-list">
+                                <!-- Favorited items will be rendered here dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <div class="section-label">個人帳戶統計</div>
+                            <div class="description-box" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>騎乘里程紀錄</span>
+                                    <span style="color: white; font-weight: 600;">128.4 KM</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>已回報點數</span>
+                                    <span style="color: white; font-weight: 600;">5 次</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>獲得愛心贊同</span>
+                                    <span style="color: white; font-weight: 600;">42 次</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="vote-btn" style="margin-top: 1rem; border-color: var(--accent-red); color: var(--accent-red);" onclick="showModal('login-modal')">
+                            <i class="fas fa-sign-out-alt"></i> 模擬切換使用者帳戶
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VIEW 4: Facility Details -->
+                <div class="info-body" id="sidebar-facility-view" style="display: none;">
+                    <div class="hazard-meta">
+                        <span class="facility-type-tag" id="facility-type-name">加油站</span>
+                        <div id="facility-badge" class="badge danger-5" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">24H 營業</div>
+                    </div>
+
+                    <h2 id="facility-title" style="margin: 0.5rem 0; font-size: 1.3rem; font-weight: 700; color: white;">中油加油站</h2>
+                    
+                    <div class="form-group">
+                        <div class="section-label">設施服務詳情</div>
+                        <div class="description-box" id="facility-description">
+                            此加油站設有機車專用加油車道...
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="section-label">提供特色與服務</div>
+                        <div class="service-tags-container" id="facility-services" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.2rem;">
+                            <!-- JS will render service tags dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="reporter-card" style="border-top: 1px dashed var(--glass-border); padding-top: 0.75rem; margin-top: auto;">
+                        <div class="reporter-info">
+                            <div class="reporter-avatar"><i class="fas fa-shield-alt"></i></div>
+                            <div>資訊類別: <span style="color: var(--accent-green); font-weight: 600;">官方認證設施</span></div>
+                        </div>
+                        <div id="facility-extra" style="color: var(--text-secondary);"> CPC </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Guide banner / overlay toast -->
+        <div class="map-onboarding-toast" id="onboarding-toast">
+            <i class="fas fa-hand-point-up"></i>
+            <span>請點擊地圖上的任意位置來標記危險路段</span>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Mock Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal-container">
+            <div class="modal-logo">
+                <i class="fas fa-lock"></i>
+            </div>
+            <div class="modal-header">
+                <h3>騎士登入驗證</h3>
+                <p>請登入帳號以進行危險路況評分與留言</p>
+            </div>
+            <form class="modal-form" onsubmit="event.preventDefault(); hideModal('login-modal');">
+                <div class="form-group">
+                    <label>逢甲大學學校信箱 / 手機號碼</label>
+                    <input type="text" placeholder="例如：d1234567@fcu.edu.tw" value="d11081029@fcu.edu.tw">
+                </div>
+                <div class="form-group">
+                    <label>密碼</label>
+                    <input type="password" placeholder="輸入您的密碼" value="••••••••">
+                </div>
+                <button type="submit" class="modal-btn" id="modal-login-btn">
+                    立即登入並同步
+                </button>
+            </form>
+            <div class="modal-footer">
+                沒有帳號嗎？ <span>立即建立新騎士卡</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Notifications -->
+    <div class="notification-toast" id="notification-toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-msg">回報成功！</span>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Application Logic Resources -->
+    <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+
+</body>
+</html>

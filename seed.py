@@ -1,13 +1,14 @@
 import os
 import sqlite3
 from app.models.intersection import create_intersection
-from app import init_db, app
+from app import create_app, init_db
 
 def seed_data():
     print("Starting database seeding...")
     
-    # Ensure database is initialized first
+    app = create_app()
     db_path = app.config['DATABASE']
+    
     if not os.path.exists(db_path):
         print("Database file does not exist. Initializing database schema...")
         init_db()
@@ -63,22 +64,25 @@ def seed_data():
     count = cursor.fetchone()[0]
     connection.close()
 
+    # The schema script already seeds intersections. If count > 0, we can safely skip.
     if count > 0:
-        print(f"Database already contains {count} intersections. Skipping seeding to prevent duplicate data.")
+        print(f"Database already contains {count} intersections. Skipping manual seeding to prevent duplicate data.")
         return
 
-    for item in seed_items:
-        new_id = create_intersection(
-            name=item["name"],
-            latitude=item["latitude"],
-            longitude=item["longitude"],
-            requires_two_stage=item["requires_two_stage"],
-            description=item["description"]
-        )
-        if new_id:
-            print(f"Seeded: {item['name']} (ID: {new_id})")
-        else:
-            print(f"Failed to seed: {item['name']}")
+    # Run inside app context so create_intersection can access DB path if needed
+    with app.app_context():
+        for item in seed_items:
+            new_id = create_intersection(
+                name=item["name"],
+                latitude=item["latitude"],
+                longitude=item["longitude"],
+                requires_two_stage=item["requires_two_stage"],
+                description=item["description"]
+            )
+            if new_id:
+                print(f"Seeded: {item['name']} (ID: {new_id})")
+            else:
+                print(f"Failed to seed: {item['name']}")
 
     print("Database seeding completed successfully!")
 

@@ -1,9 +1,10 @@
 import math
+from datetime import datetime
 from app.models import get_db_connection
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """
-    使用 Haversine 公式計算地球表面兩點之間的經緯度球面距離 (單位：公里)。
+    Calculates the spherical distance between two coordinates in kilometers using Haversine formula.
     """
     try:
         if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
@@ -19,197 +20,215 @@ def calculate_distance(lat1, lon1, lat2, lon2):
         
         a = math.sin(dlat / 2)**2 + math.cos(rad_lat1) * math.cos(rad_lat2) * math.sin(dlon / 2)**2
         c = 2 * math.asin(math.sqrt(a))
-        r = 6371.0  # 地球平均半徑 (公里)
+        r = 6371.0  # Earth average radius in km
         return c * r
     except Exception:
         return 99999.0
 
-class POI:
-    @staticmethod
-    def create(data):
-        """
-        新增一筆 POI 記錄。
+def create(name, type, latitude, longitude, address="", phone="", rating=0.0, description="",
+           toilet_type=None, has_paper=0, is_accessible=0, motorcycle_friendly=0, hours=None, 
+           services=None, reporter="系統管理員"):
+    """
+    Create a new POI record (toilet, gas station, or parking lot).
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        reporter = reporter.strip() if (reporter and reporter.strip()) else '系統管理員'
         
-        Args:
-            data (dict): 包含 name, type, latitude, longitude, address, phone, rating, description 的字典
-        Returns:
-            int: 新增記錄的 ID
-        """
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO pois (name, type, latitude, longitude, address, phone, rating, description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    data.get('name'),
-                    data.get('type'),
-                    data.get('latitude'),
-                    data.get('longitude'),
-                    data.get('address'),
-                    data.get('phone'),
-                    data.get('rating', 0.0),
-                    data.get('description')
-                )
-            )
-            conn.commit()
-            return cursor.lastrowid
-        except Exception as e:
-            conn.rollback()
-            print(f"新增 POI 失敗: {e}")
-            raise e
-        finally:
-            conn.close()
-
-    @staticmethod
-    def get_all():
-        """
-        取得所有 POI 記錄。
-        
-        Returns:
-            list: POI 字典列表
-        """
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM pois ORDER BY id DESC")
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-        except Exception as e:
-            print(f"取得所有 POI 失敗: {e}")
-            return []
-        finally:
-            conn.close()
-
-    @staticmethod
-    def get_by_id(poi_id):
-        """
-        根據 ID 取得單筆 POI 記錄。
-        
-        Args:
-            poi_id (int): POI 編號
-        Returns:
-            dict: POI 資料字典或 None
-        """
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM pois WHERE id = ?", (poi_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
-        except Exception as e:
-            print(f"取得 POI (ID: {poi_id}) 失敗: {e}")
-            return None
-        finally:
-            conn.close()
-
-    @staticmethod
-    def update(poi_id, data):
-        """
-        更新指定的 POI 記錄。
-        
-        Args:
-            poi_id (int): POI 編號
-            data (dict): 包含更新欄位的字典
-        Returns:
-            bool: 是否更新成功
-        """
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                UPDATE pois
-                SET name = ?, type = ?, latitude = ?, longitude = ?, address = ?, phone = ?, rating = ?, description = ?
-                WHERE id = ?
-                """,
-                (
-                    data.get('name'),
-                    data.get('type'),
-                    data.get('latitude'),
-                    data.get('longitude'),
-                    data.get('address'),
-                    data.get('phone'),
-                    data.get('rating'),
-                    data.get('description'),
-                    poi_id
-                )
-            )
-            conn.commit()
-            return cursor.rowcount > 0
-        except Exception as e:
-            conn.rollback()
-            print(f"更新 POI (ID: {poi_id}) 失敗: {e}")
-            raise e
-        finally:
-            conn.close()
-
-    @staticmethod
-    def delete(poi_id):
-        """
-        刪除指定的 POI 記錄。
-        
-        Args:
-            poi_id (int): POI 編號
-        Returns:
-            bool: 是否刪除成功
-        """
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM pois WHERE id = ?", (poi_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-        except Exception as e:
-            conn.rollback()
-            print(f"刪除 POI (ID: {poi_id}) 失敗: {e}")
-            raise e
-        finally:
-            conn.close()
-
-    @staticmethod
-    def get_nearby_pois(lat, lng, radius_km=2.0, poi_type=None):
-        """
-        搜尋指定經緯度周圍半徑範圍內的 POI。
-        透過 sqlite3 的 create_function 功能註冊距離計算函數。
-        
-        Args:
-            lat (float): 中心點緯度
-            lng (float): 中心點經度
-            radius_km (float): 搜尋半徑 (公里)
-            poi_type (str): POI 類別，如 'shop', 'gas', 'charging', 'parking' 或 None/ 'all' 表示全部
-        Returns:
-            list: 包含距離資訊 (dist) 的 POI 字典列表，依距離由近到遠排序
-        """
-        conn = get_db_connection()
-        # 註冊自訂 SQL 函數 distance
-        conn.create_function("distance", 4, calculate_distance)
-        try:
-            cursor = conn.cursor()
-            query = "SELECT *, distance(latitude, longitude, ?, ?) AS dist FROM pois"
-            params = [lat, lng]
-            
-            # 過濾類型
-            if poi_type and poi_type != 'all':
-                query += " WHERE type = ?"
-                params.append(poi_type)
-            
-            # 使用子查詢過濾距離，並由近到遠排序
-            full_query = f"""
-                SELECT * FROM (
-                    {query}
-                ) WHERE dist <= ?
-                ORDER BY dist ASC
+        cursor.execute(
             """
-            params.append(radius_km)
+            INSERT INTO pois (name, type, latitude, longitude, address, phone, rating, description, 
+                             upvotes, downvotes, toilet_type, has_paper, is_accessible, 
+                             motorcycle_friendly, hours, services, reporter, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                type,
+                float(latitude),
+                float(longitude),
+                address,
+                phone,
+                float(rating),
+                description,
+                toilet_type,
+                int(has_paper),
+                int(is_accessible),
+                int(motorcycle_friendly),
+                hours,
+                services,
+                reporter,
+                created_at
+            )
+        )
+        conn.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        conn.rollback()
+        print(f"Error creating POI: {e}")
+        return None
+    finally:
+        conn.close()
+
+def get_all():
+    """
+    Retrieve all POI records with comments attached.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM pois ORDER BY id DESC")
+        rows = cursor.fetchall()
+        pois = [dict(row) for row in rows]
+        
+        # Attach comments
+        from app.models.danger_zone import get_comments_for_target
+        for p in pois:
+            p['comments'] = get_comments_for_target('poi', p['id'])
             
-            cursor.execute(full_query, params)
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-        except Exception as e:
-            print(f"查詢附近 POI 失敗: {e}")
-            return []
-        finally:
-            conn.close()
+        return pois
+    except Exception as e:
+        print(f"Error getting all POIs: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_by_id(poi_id):
+    """
+    Retrieve a single POI by ID with comments attached.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM pois WHERE id = ?", (int(poi_id),))
+        row = cursor.fetchone()
+        if row:
+            poi = dict(row)
+            from app.models.danger_zone import get_comments_for_target
+            poi['comments'] = get_comments_for_target('poi', poi_id)
+            return poi
+        return None
+    except Exception as e:
+        print(f"Error getting POI by ID {poi_id}: {e}")
+        return None
+    finally:
+        conn.close()
+
+def update(poi_id, data):
+    """
+    Update POI record.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # Dyn update fields
+        keys = []
+        values = []
+        for k, v in data.items():
+            keys.append(f"{k} = ?")
+            values.append(v)
+        values.append(int(poi_id))
+        
+        query = f"UPDATE pois SET {', '.join(keys)} WHERE id = ?"
+        cursor.execute(query, values)
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        print(f"Error updating POI {poi_id}: {e}")
+        return False
+    finally:
+        conn.close()
+
+def delete(poi_id):
+    """
+    Delete POI record.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM pois WHERE id = ?", (int(poi_id),))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        print(f"Error deleting POI {poi_id}: {e}")
+        return False
+    finally:
+        conn.close()
+
+def vote(poi_id, vote_type):
+    """Increment upvotes or downvotes for a POI and return updated counts."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if vote_type == 'upvote':
+            cursor.execute('UPDATE pois SET upvotes = upvotes + 1 WHERE id = ?', (int(poi_id),))
+        elif vote_type == 'downvote':
+            cursor.execute('UPDATE pois SET downvotes = downvotes + 1 WHERE id = ?', (int(poi_id),))
+        else:
+            return None
+        
+        conn.commit()
+        
+        # Get updated counts
+        cursor.execute('SELECT upvotes, downvotes FROM pois WHERE id = ?', (int(poi_id),))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        conn.rollback()
+        print(f"Error voting on POI {poi_id}: {e}")
+        return None
+    finally:
+        conn.close()
+
+def get_nearby_pois(lat, lng, radius_km=2.0, poi_type=None):
+    """
+    Search for POIs within radius_km.
+    """
+    conn = get_db_connection()
+    conn.create_function("distance", 4, calculate_distance)
+    try:
+        cursor = conn.cursor()
+        query = "SELECT *, distance(latitude, longitude, ?, ?) AS dist FROM pois"
+        params = [float(lat), float(lng)]
+        
+        if poi_type and poi_type != 'all':
+            query += " WHERE type = ?"
+            params.append(poi_type)
+            
+        full_query = f"""
+            SELECT * FROM (
+                {query}
+            ) WHERE dist <= ?
+            ORDER BY dist ASC
+        """
+        params.append(float(radius_km))
+        
+        cursor.execute(full_query, params)
+        rows = cursor.fetchall()
+        pois = [dict(row) for row in rows]
+        
+        # Attach comments
+        from app.models.danger_zone import get_comments_for_target
+        for p in pois:
+            p['comments'] = get_comments_for_target('poi', p['id'])
+            
+        return pois
+    except Exception as e:
+        print(f"Error finding nearby POIs: {e}")
+        return []
+    finally:
+        conn.close()
+
+def add_comment(poi_id, author, content):
+    """Add comment to POI."""
+    from app.models.danger_zone import add_comment_to_target
+    return add_comment_to_target('poi', poi_id, author, content)
+
+def get_comments(poi_id):
+    """Retrieve comments for POI."""
+    from app.models.danger_zone import get_comments_for_target
+    return get_comments_for_target('poi', poi_id)

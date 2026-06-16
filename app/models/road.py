@@ -1,15 +1,5 @@
 import json
-import sqlite3
-from flask import current_app, g
-
-def get_db():
-    """Get sqlite3 connection for the current Flask request context."""
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE']
-        )
-        g.db.row_factory = sqlite3.Row
-    return g.db
+from app.models import get_db_connection
 
 def row_to_dict(row):
     """Convert SQLite Row to a dictionary and parse coordinates JSON string."""
@@ -23,19 +13,21 @@ def row_to_dict(row):
 
 def get_all():
     """Retrieve all road segments from database."""
-    db = get_db()
+    conn = get_db_connection()
     try:
-        cursor = db.cursor()
+        cursor = conn.cursor()
         cursor.execute('SELECT * FROM roads')
         rows = cursor.fetchall()
         return [row_to_dict(r) for r in rows]
-    except sqlite3.Error as e:
-        current_app.logger.error(f"Database error in road.get_all: {e}")
+    except Exception as e:
+        print(f"Database error in road.get_all: {e}")
         return []
+    finally:
+        conn.close()
 
 def get_filtered_roads(name=None, traffic_level=None, two_stage_turn=None):
     """Retrieve filtered road segments based on parameters."""
-    db = get_db()
+    conn = get_db_connection()
     query = 'SELECT * FROM roads WHERE 1=1'
     params = []
     
@@ -56,10 +48,12 @@ def get_filtered_roads(name=None, traffic_level=None, two_stage_turn=None):
             pass
             
     try:
-        cursor = db.cursor()
+        cursor = conn.cursor()
         cursor.execute(query, params)
         rows = cursor.fetchall()
         return [row_to_dict(r) for r in rows]
-    except sqlite3.Error as e:
-        current_app.logger.error(f"Database error in road.get_filtered_roads: {e}")
+    except Exception as e:
+        print(f"Database error in road.get_filtered_roads: {e}")
         return []
+    finally:
+        conn.close()
