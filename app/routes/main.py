@@ -5,7 +5,7 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
-    """Render the main index page containing the Leaflet map."""
+    """Render the main index page containing the Leaflet interactive map dashboard."""
     return render_template('index.html')
 
 @main_bp.route('/danger-zones')
@@ -20,14 +20,14 @@ def danger_zone_detail(id):
     zone = danger_zone.get_by_id(id)
     if not zone:
         flash("找不到該危險路段資訊。", "error")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.danger_zones_list'))
     
     comments = danger_zone.get_comments(id)
     return render_template('danger_zone_detail.html', zone=zone, comments=comments)
 
 @main_bp.route('/danger-zones/<int:id>/comments', methods=['POST'])
 def add_comment(id):
-    """Handle submissions of new comments on a danger zone."""
+    """Handle standard form submissions of new comments on a danger zone."""
     author = request.form.get('author', '').strip()
     content = request.form.get('content', '').strip()
     

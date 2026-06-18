@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>最強最安全的城市機車友善地圖</title>
+    <title>最強最安全的城市機車友善地圖 - 危險路段評價系統</title>
     
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <!-- Custom Cyber Dark Styling -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
             
             <div class="stat-pill spots">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>安全點標記:</span>
+                <span>危險路標:</span>
                 <span class="count" id="total-danger-spots">0</span>
             </div>
             <div class="stat-pill votes">
@@ -76,7 +76,7 @@
                     <input type="text" id="search-input" placeholder="搜尋路段、交叉路口、或待轉區...">
                 </div>
                 
-                <div class="filter-group" id="legend-danger">
+                <div class="filter-group">
                     <div class="filter-title">資訊圖層篩選 (點擊切換)</div>
                     <div class="filter-options-interactive">
                         <label class="filter-checkbox-container">
@@ -88,11 +88,6 @@
                             <input type="checkbox" id="toggle-leftturn-layer" checked>
                             <span class="custom-checkbox leftturn"></span>
                             <span class="filter-text">🔄 顯示兩段式左轉提示</span>
-                        </label>
-                        <label class="filter-checkbox-container">
-                            <input type="checkbox" id="toggle-road-layer" checked>
-                            <span class="custom-checkbox road"></span>
-                            <span class="filter-text">🚗 顯示道路流量資訊 (彩色線)</span>
                         </label>
                     </div>
                     
@@ -109,7 +104,7 @@
                 <div class="filter-group" id="legend-toilet" style="display: none;">
                     <div class="filter-title">地圖圖例說明</div>
                     <div class="filter-options">
-                        <span class="filter-label"><span class="badge toilet-tag" style="background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.4);">🚻 公廁</span> 青色呼吸燈標記</span>
+                        <span class="filter-label"><span class="badge toilet-tag">🚻 公廁</span> 青色呼吸燈標記</span>
                         <span class="filter-label" style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> 點擊地圖上的任意位置可回報公廁</span>
                     </div>
                 </div>
@@ -165,7 +160,7 @@
             </div>
 
             <div class="sidebar-content">
-                <!-- VIEW 1: Danger/Turn Point Details -->
+                <!-- VIEW 1: Danger Point Details -->
                 <div class="info-body" id="sidebar-details-view">
                     <div class="hazard-meta">
                         <span class="hazard-type-tag" id="detail-hazard-name">臨停違停 / 視線死角</span>
@@ -267,7 +262,7 @@
                     </div>
                 </div>
 
-                <!-- VIEW 2: Danger/Toilet Point Report Form -->
+                <!-- VIEW 2: Danger Point Report Form -->
                 <div class="info-body" id="sidebar-form-view" style="display: none;">
                     <div class="location-indicator">
                         <i class="fas fa-map-marker-alt"></i>
@@ -460,7 +455,7 @@
                 <h3>騎士登入驗證</h3>
                 <p>請登入帳號以進行危險路況評分與留言</p>
             </div>
-            <form class="modal-form" onsubmit="event.preventDefault(); hideModal('login-modal');">
+            <form class="modal-form">
                 <div class="form-group">
                     <label>逢甲大學學校信箱 / 手機號碼</label>
                     <input type="text" placeholder="例如：d1234567@fcu.edu.tw" value="d11081029@fcu.edu.tw">
@@ -489,7 +484,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- Application Logic Resources -->
-    <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+    <script src="js/mockData.js"></script>
+    <script src="js/app.js"></script>
 
 </body>
 </html>
