@@ -1,25 +1,22 @@
-import sqlite3
 import os
+import sqlite3
+from flask import current_app, g, has_app_context
 
-# 定義 SQLite 資料庫檔案路徑，放在專案根目錄的 instance/ 目錄下
-DATABASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'instance', 'database.db'))
+FALLBACK_DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+    'instance', 
+    'database.db'
+)
 
 def get_db_connection():
-    """
-    建立並回傳 SQLite 資料庫連線。
-    設定 row_factory 為 sqlite3.Row 以便使用欄位名稱讀取資料。
-    
-    Returns:
-        sqlite3.Connection: 資料庫連線物件
-    """
-    try:
-        # 確保 instance 目錄存在
-        os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-        conn = sqlite3.connect(DATABASE_PATH)
-        conn.row_factory = sqlite3.Row
-        # 啟用外鍵支援
-        conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
-    except sqlite3.Error as e:
-        print(f"資料庫連線失敗: {e}")
-        raise e
+    """Returns a connection to the SQLite database. Detects if running within Flask context."""
+    if has_app_context():
+        db_path = current_app.config['DATABASE']
+    else:
+        db_path = FALLBACK_DB_PATH
+        # Ensure parent directory exists for fallback
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn

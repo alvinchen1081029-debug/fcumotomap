@@ -1,88 +1,94 @@
-# 城市機車友善地圖系統 - 流程圖與資料流設計 (FLOWCHART)
+# 城市機車友善地圖與車流量查詢系統 - 系統與使用者流程圖 (FLOWCHART)
 
-本文件繪製本系統的**使用者流程圖 (User Flow)**與**系統序列圖 (Sequence Diagram)**，幫助開發團隊理解功能間的跳轉關係與後端資料傳輸流程。
+本文件使用 Mermaid 流程圖語法，視覺化展示使用者的操作路徑與系統內的資料傳遞序列，並附帶路由功能對照表。
 
 ## 1. 使用者流程圖 (User Flow)
 
-此圖描述使用者進入系統後，如何操作各項功能，包括地圖瀏覽、兩段式左轉查詢、危險路段評分，以及新設計的**附近推薦功能**。
+描述使用者進入系統後，如何使用查詢面板、瀏覽地圖、進行車流量篩選、查看或回報危險路段等操作。
 
 ```mermaid
 flowchart TD
-    Start([使用者開啟網頁]) --> Home[首頁 - 機車友善地圖]
+    Start([使用者進入網站]) --> Home[首頁：瀏覽地圖]
     
-    Home --> Choice{選擇操作功能}
+    Home --> Panel[首頁左側：查詢篩選面板]
+    Home --> Map[首頁右側：Leaflet.js 互動地圖]
     
-    %% F-01/F-02/F-03
-    Choice -->|瀏覽地圖| ViewMap[地圖瀏覽與縮放]
-    Choice -->|左轉提示 F-02| LeftTurn[查看/標記兩段式左轉路口]
-    Choice -->|危險路段 F-03| DangerSystem[查看/回報危險路段與評分]
+    %% 查詢與篩選路徑
+    Panel --> QueryFlow{要查詢什麼？}
+    QueryFlow -->|車流量等級| FilterTraffic[選擇車流量：順暢/壅塞/紫爆] --> UpdateMapLine[地圖上僅顯示相應路段]
+    QueryFlow -->|兩段式左轉| FilterTurn[勾選兩段式左轉路段] --> UpdateMapTurn[地圖上標示需要待轉的路口]
+    QueryFlow -->|特定路名| InputSearch[輸入路名關鍵字，如「福星路」] --> ZoomToRoad[地圖自動定位並放大該路段]
     
-    %% 新增功能: 附近推薦
-    Choice -->|附近推薦| NearIntro[進入附近推薦頁面/標籤]
-    NearIntro --> GetLoc{瀏覽器詢問定位權限}
+    %% 地圖互動路徑
+    Map --> MapInteract{如何操作地圖？}
+    MapInteract -->|點擊路段/路口| ShowPopup[彈出資訊視窗：顯示路名、即時車流量與待轉規則]
+    MapInteract -->|點擊危險紅點| ShowDangerDetail[點擊連結進入「危險路段評分詳情頁」]
+    MapInteract -->|地圖點擊右鍵| OpenReportForm[彈出「新增危險路段」表單]
     
-    GetLoc -->|允許| Geolocation[取得精準 GPS 座標]
-    GetLoc -->|拒絕/失敗| DefaultLoc[使用預設座標: 逢甲大學]
+    %% 危險路段詳情頁
+    ShowDangerDetail --> DetailPage[危險路段詳情頁面]
+    DetailPage --> DetailInteract{可進行什麼操作？}
+    DetailInteract -->|贊同或反對| VoteAction[點擊投票按鈕] --> APIVote[送出 AJAX 請求更新票數] --> RenderVote[即時更新頁面票數]
+    DetailInteract -->|發表留言| WriteComment[填寫留言表單] --> POSTComment[送出 POST 請求] --> ReloadDetail[刷新頁面並顯示新留言]
     
-    Geolocation --> FetchPOI[向後端 API 請求周邊 POI 資料]
-    DefaultLoc --> FetchPOI
-    
-    FetchPOI --> RenderUI[在 Leaflet 地圖繪製標記 <br> 並在側邊欄顯示推薦清單]
-    
-    RenderUI --> Interact{使用者互動}
-    Interact -->|類別篩選| Filter[切換篩選: 機車行/加油站/停車場/危險路段]
-    Filter --> FetchPOI
-    
-    Interact -->|點選列表項目| FocusPOI[地圖平移聚焦 POI 並彈出詳細泡泡資訊]
-    Interact -->|點選地圖任意點| ManualSearch[以點擊處為中心，重新搜尋附近推薦]
-    ManualSearch --> FetchPOI
+    %% 新增危險路段
+    OpenReportForm --> FillForm[填寫危險描述與評分星級] --> SubmitReport[點擊送出] --> APICreate[發送 POST 請求存入資料庫] --> AddMarker[地圖上立即新增紅色警告圖示]
 ```
 
 ---
 
 ## 2. 系統序列圖 (Sequence Diagram)
 
-此序列圖展示「附近推薦功能」在前後端與資料庫之間的資料傳輸與計算流程。
+以下是兩個核心情境的詳細系統序列：
 
+### 情境 A：使用者在地圖上回報新的危險路段
 ```mermaid
 sequenceDiagram
-    actor User as 機車騎士
+    actor User as 使用者
     participant Browser as 瀏覽器 (JS / Leaflet)
-    participant Flask as Flask 路由 (recommendations.py)
-    participant Model as POI Model (poi.py)
+    participant Flask as Flask Route (api.py)
     participant DB as SQLite 資料庫
 
-    User->>Browser: 點選「附近推薦」功能
-    Browser->>Flask: GET /recommendations
-    Flask-->>Browser: 渲染並回傳 recommendations.html 基礎介面
-    
-    Note over Browser: 瀏覽器執行 JS，呼叫 Geolocation API
-    Browser->>Browser: 取得騎士座標 (lat, lng)
+    User->>Browser: 在地圖右鍵選取地點，填寫危險描述與星級
+    User->>Browser: 點擊「送出回報」
+    Note over Browser: 前端 JS 進行防呆驗證<br/>(檢查欄位不可為空，緯經度是否正確)
+    Browser->>Flask: POST /api/danger-zones (JSON payload)
+    Flask->>Flask: 後端防重複回報與輸入清洗
+    Flask->>DB: INSERT INTO danger_zones (latitude, longitude, description, rating, created_at)
+    DB-->>Flask: 成功，回傳新插入資料列的 ID
+    Flask-->>Browser: 回傳 JSON {status: "success", id: ID, data: ...}
+    Browser->>Browser: 在 Leaflet 地圖上對應座標建立紅色的 Marker
+    Browser-->>User: 顯示「回報成功」提示泡泡
+```
 
-    Browser->>Flask: GET /api/nearby?lat=24.178&lng=120.646&type=all
-    
-    Note over Flask: 註冊距離計算函數 distance() 到 SQLite 連線
-    Flask->>Model: get_nearby_pois(lat, lng, radius=2.0, type='all')
-    Model->>DB: SELECT *, distance(lat, lng, 24.178, 120.646) AS dist FROM pois HAVING dist <= 2.0 ORDER BY dist
-    DB-->>Model: 回傳符合之 POI 記錄 (機車行、加油站、危險路段等)
-    Model-->>Flask: 回傳 POI 資料列表 (含計算後之距離 dist)
-    
-    Flask-->>Browser: 回傳 JSON 格式 POI 列表資料
-    
-    Note over Browser: Leaflet.js 清除舊標記，繪製新標記與側邊清單
-    Browser-->>User: 顯示附近推薦點位、距離與星級評價
+### 情境 B：使用者對危險路段進行投票（贊同/反對）
+```mermaid
+sequenceDiagram
+    actor User as 使用者
+    participant Browser as 瀏覽器 (HTML 詳情頁)
+    participant Flask as Flask Route (api.py)
+    participant DB as SQLite 資料庫
+
+    User->>Browser: 點擊「贊同 (Upvote)」按鈕
+    Browser->>Flask: POST /api/danger-zones/<id>/vote (JSON: {type: 'upvote'})
+    Flask->>DB: UPDATE danger_zones SET upvotes = upvotes + 1 WHERE id = <id>
+    DB-->>Flask: 成功更新資料列
+    Flask->>DB: SELECT upvotes, downvotes FROM danger_zones WHERE id = <id>
+    DB-->>Flask: 回傳最新的投票數據
+    Flask-->>Browser: 回傳 JSON {status: "success", upvotes: new_value}
+    Browser->>Browser: 透過 JS 更新頁面上的「贊同數」數字與按鈕狀態
 ```
 
 ---
 
-## 3. 功能清單與路由對照表
+## 3. 功能清單對照表
 
-| 功能名稱 | HTTP 方法 | URL 路徑 | 對應 Jinja2 模板 | 說明 |
-| :--- | :--- | :--- | :--- | :--- |
-| **地圖首頁** | GET | `/` | `index.html` | 系統主地圖，整合基本查詢與顯示 (F-01) |
-| **左轉提示清單** | GET | `/left_turn` | `left_turn/list.html` | 列表顯示所有標記之兩段式左轉路口 (F-02) |
-| **新增左轉提示** | POST | `/left_turn/create` | — | 接收使用者標記左轉路口的表單並存入 DB |
-| **危險路段評價** | GET | `/danger` | `danger/list.html` | 顯示危險路段評分與星級清單頁面 (F-03) |
-| **新增危險回報** | POST | `/danger/create` | — | 接收危險路段回報表單並寫入 DB (F-03) |
-| **附近推薦頁面** | GET | `/recommendations` | `recommendations/index.html` | 顯示附近推薦主頁與地圖 (新增功能) |
-| **獲取周邊推薦 API**| GET | `/api/nearby` | — | JSON API，依座標、半徑、類型回傳推薦點 (新增功能) |
+| 功能描述 | HTTP 方法 | URL 路徑 | 對應 HTML 模板 | 後端 Controller 與處理邏輯 |
+| :--- | :---: | :--- | :--- | :--- |
+| **首頁與地圖瀏覽** | `GET` | `/` | `templates/index.html` | `main.py` -> 渲染主頁面 (地圖框架) |
+| **危險路段詳細資訊** | `GET` | `/danger-zones/<id>` | `templates/danger_zone_detail.html` | `main.py` -> 讀取特定危險點詳細星級、描述與留言列表 |
+| **新增危險路段留言** | `POST` | `/danger-zones/<id>/comments` | — (重導向至詳情頁) | `main.py` -> 接收留言表單，存入 DB，重導向回詳情頁 |
+| **取得所有路段及車流量**| `GET` | `/api/roads` | — (回傳 JSON) | `api.py` -> 查詢所有道路幾何與車流量狀態 |
+| **取得所有危險標記點** | `GET` | `/api/danger-zones` | — (回傳 JSON) | `api.py` -> 查詢所有危險點位置與平均星級 |
+| **新增危險標記點** | `POST` | `/api/danger-zones` | — (回傳 JSON) | `api.py` -> 接收地圖點擊新增的 JSON 資料並寫入 DB |
+| **對危險標記進行投票** | `POST` | `/api/danger-zones/<id>/vote`| — (回傳 JSON) | `api.py` -> 更新特定危險點的贊同/反對數 |

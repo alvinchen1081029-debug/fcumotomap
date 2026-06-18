@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-lg-8 mx-auto text-center">
+            <h2 class="fw-bold text-light mb-2">
+                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i> 機車騎士回報之危險路段列表
+            </h2>
+            <p class="text-muted">
+                由群眾力量共同回報的危險點，包含打滑、盲區、公車搶道等路況。點擊卡片可查看詳細留言，或對該回報進行贊同與反對投票。
+            </p>
+        </div>
+    </div>
+
+    <!-- Quick info metrics -->
+    <div class="row g-4 mb-5 justify-content-center">
+        <div class="col-6 col-md-3">
+            <div class="metric-card p-3 rounded text-center bg-glass border-glass shadow-sm">
+                <div class="fs-3 fw-bold text-danger font-outfit">{{ zones|length }}</div>
+                <div class="small text-muted">已回報危險點</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="metric-card p-3 rounded text-center bg-glass border-glass shadow-sm">
+                <div class="fs-3 fw-bold text-primary font-outfit">
+                    {% if zones %}
+                        {% set total_votes = namespace(val=0) %}
+                        {% for z in zones %}
+                            {% set total_votes.val = total_votes.val + z.upvotes + z.downvotes %}
+                        {% endfor %}
+                        {{ total_votes.val }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="small text-muted">熱烈投票數</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Container -->
+    <div class="row g-4">
+        {% if zones %}
+            {% for zone in zones %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card danger-card h-100 bg-glass border-glass hover-scale shadow-sm d-flex flex-column">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-glass-dark border border-danger text-danger px-2.5 py-1.5 rounded-pill fs-7">
+                                    <i class="bi bi-exclamation-diamond me-1"></i> ID #{{ zone.id }}
+                                </span>
+                                <span class="text-muted small font-outfit">
+                                    <i class="bi bi-clock me-1"></i> {{ zone.created_at[:10] }}
+                                </span>
+                            </div>
+                            
+                            <h5 class="card-title fw-bold text-light mt-2 mb-2">{{ zone.title }}</h5>
+                            
+                            <!-- Rating display -->
+                            <div class="mb-3 text-warning">
+                                {% for i in range(5) %}
+                                    {% if i < zone.rating %}
+                                        <i class="bi bi-star-fill me-0.5"></i>
+                                    {% else %}
+                                        <i class="bi bi-star me-0.5"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="text-muted small ms-1 font-outfit">({{ zone.rating }}/5 星)</span>
+                            </div>
+
+                            <p class="card-text text-muted text-truncate-3 small mb-4 flex-grow-1">
+                                {{ zone.description }}
+                            </p>
+
+                            <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top border-muted-custom">
+                                <!-- Votes count -->
+                                <div class="d-flex gap-3 text-muted small">
+                                    <span><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> {{ zone.upvotes }}</span>
+                                    <span><i class="bi bi-hand-thumbs-down-fill text-danger me-1"></i> {{ zone.downvotes }}</span>
+                                </div>
+                                <a href="{{ url_for('main.danger_zone_detail', id=zone.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                    查看與討論 <i class="bi bi-arrow-right-short ms-0.5"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="p-5 rounded bg-glass border-glass max-w-lg mx-auto">
+                    <i class="bi bi-check-circle text-success fs-1 mb-3"></i>
+                    <h5 class="fw-bold text-light">目前尚無任何危險回報！</h5>
+                    <p class="text-muted mb-0">這代表逢甲周邊路段非常安全，或使用者尚未回報。您可以到首頁地圖上點選右鍵進行第一個回報。</p>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary rounded-pill mt-4 px-4">
+                        前往地圖首頁
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
